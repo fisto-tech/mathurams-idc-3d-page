@@ -910,13 +910,17 @@ html, body {
   }
   #sidebar-config {
     grid-row: 3;
-    grid-column: 1;
+    grid-column: 1 !important;
     border-right: none;
     border-top: 1px solid var(--color-border);
     overflow-y: auto;
     flex-direction: column;
     gap: 20px;
     padding: 16px 16px 40px 16px;
+  }
+  #canvas-wrap {
+    grid-row: 2;
+    grid-column: 1 !important;
   }
   .config-section { min-width: 100%; }
   #sidebar { height: calc(100vh - var(--topbar-h)); }
