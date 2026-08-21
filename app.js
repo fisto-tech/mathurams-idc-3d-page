@@ -47,6 +47,9 @@ dirLight.castShadow = true;
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.near = 0.1;
 dirLight.shadow.camera.far  = 500;
+// Eliminate circular shadow acne artifacts on flat/curved surfaces
+dirLight.shadow.bias = -0.0005;
+dirLight.shadow.normalBias = 0.05;
 scene.add(dirLight);
 
 // Fill directional light (opposite side, no shadows)
