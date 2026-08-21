@@ -14,7 +14,7 @@ const wrap    = document.getElementById('canvas-wrap');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type    = THREE.PCFShadowMap;
 renderer.outputEncoding    = THREE.sRGBEncoding;
 // Match Three.js Editor renderer settings
 renderer.physicallyCorrectLights = true;
