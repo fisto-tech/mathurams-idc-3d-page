@@ -22,7 +22,7 @@ renderer.toneMapping       = THREE.NoToneMapping;
 renderer.toneMappingExposure = 1.0;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xF8FAFC);
+scene.background = new THREE.Color(0xb8b8b8);
 
 const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 10000);
 camera.position.set(5, 4, 7);
@@ -133,7 +133,7 @@ let defaultCamPos   = null;
 let defaultCamTarget = null;
 let wireframeMode   = false;
 let bgIndex         = 0;
-const bgColors      = [0xc7c7c7, 0xFFFFFF, 0xF8FAFC, 0xE2E8F0, 0xF1F5F9];
+const bgColors      = [0xb8b8b8, 0xFFFFFF, 0xF8FAFC, 0xE2E8F0, 0xF1F5F9];
 let selectedMesh    = null;      // key or null
 let loadGeneration  = 0;
 
