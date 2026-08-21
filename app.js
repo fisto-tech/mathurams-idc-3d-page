@@ -41,16 +41,16 @@ controls.autoRotateSpeed = 1.0;
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 scene.add(ambientLight);
 
-// Key directional light (casts shadows)
+// Key directional light (casts shadows directly overhead)
 const dirLight = new THREE.DirectionalLight(0xffffff, 2.2);
-dirLight.position.set(3, 8, 3); // Shifted more top-down for contact shadowing
+dirLight.position.set(0.5, 10, 0.5); // Overhead placement to cast shadows directly under wheels
 dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(1024, 1024); // Lower size + higher radius yields softer shadow edges
+dirLight.shadow.mapSize.set(512, 512); // Low resolution + high blur radius = super soft shadows
 dirLight.shadow.camera.near = 0.1;
 dirLight.shadow.camera.far  = 500;
-dirLight.shadow.radius = 6.0; // High blur radius for diffused, soft shadows
+dirLight.shadow.radius = 9.0; // Max radius for diffused contact shadow look
 // Eliminate circular shadow acne artifacts on flat/curved surfaces
-dirLight.shadow.bias = -0.001;
+dirLight.shadow.bias = -0.0015;
 dirLight.shadow.normalBias = 0.05;
 scene.add(dirLight);
 
@@ -107,7 +107,7 @@ function updateEnvironment(isCouch) {
 // == Solid Floor ==============================================================
 const floorGeo = new THREE.PlaneGeometry(1000, 1000);
 const floorMat = new THREE.ShadowMaterial({
-  opacity: 0.45   // Crisper shadows matching Three.js editor
+  opacity: 0.28   // Soft contact shadows look
 });
 const floorPlane = new THREE.Mesh(floorGeo, floorMat);
 floorPlane.rotation.x = -Math.PI / 2;

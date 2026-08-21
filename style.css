@@ -938,3 +938,7 @@ html, body {
   }
   .back-btn-text { display: none; }
 }
+
+.colorpick-eyedropper-input-trigger {
+  display: none;
+}
