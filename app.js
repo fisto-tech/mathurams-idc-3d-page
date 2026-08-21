@@ -456,7 +456,7 @@ function loadModel(fileOrUrl, fileName) {
     } else if (isLabor) {
       if (sectionHeadFoot) {
         sectionHeadFoot.style.display = 'flex';
-        toggleCardVisibility('headfoot', ['ss', 'abs1', 'abs2']);
+        toggleCardVisibility('headfoot', ['ss', 'abs1']);
       }
       if (sectionSideRails) sectionSideRails.style.display = 'flex';
       if (sectionMattress) {
