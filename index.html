@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <script>
+    window.onerror = function(msg, url, line, col, error) {
+      alert("Error: " + msg + "\nURL: " + url + "\nLine: " + line + "\nCol: " + col + "\nStack: " + (error ? error.stack : 'N/A'));
+      return false;
+    };
     (function() {
       const path = window.location.pathname;
       let baseHref = '/';

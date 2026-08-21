@@ -376,7 +376,7 @@ function loadModel(fileOrUrl, fileName) {
     document.getElementById('badge-stats').textContent =
       `${Object.keys(meshMap).length} meshes . ${Math.round(totalTris).toLocaleString()} tris`;
 
-    showToast(`Loaded "${name}"`);
+    showToast(`Loaded: "${name}" | Size: ${maxSz.toFixed(2)}m | Cam Dist: ${dist.toFixed(2)}m`);
 
     // Hide/show sections dynamically based on model type
     const isIcu = name.toLowerCase().includes('icu') || productName === 'ICU Cot';
