@@ -16,8 +16,9 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
 renderer.outputEncoding    = THREE.sRGBEncoding;
-// LinearToneMapping keeps material colors accurate (matches Three.js editor default)
-renderer.toneMapping       = THREE.LinearToneMapping;
+// Match Three.js Editor renderer settings
+renderer.physicallyCorrectLights = true;
+renderer.toneMapping       = THREE.NoToneMapping;
 renderer.toneMappingExposure = 1.0;
 
 const scene = new THREE.Scene();
@@ -35,12 +36,12 @@ controls.autoRotate    = true;
 controls.autoRotateSpeed = 1.0;
 
 // == Lights ===================================================================
-// Ambient: fills shadows naturally without color tinting (matches Three.js editor)
+// Replicates Three.js Editor Default Lighting Setup
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 scene.add(ambientLight);
 
-// Main key light - casts shadows, positioned upper-front-right like Three.js editor default
-const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+// Key directional light (casts shadows)
+const dirLight = new THREE.DirectionalLight(0xffffff, 3.0);
 dirLight.position.set(5, 10, 7.5);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.set(2048, 2048);
@@ -48,9 +49,9 @@ dirLight.shadow.camera.near = 0.1;
 dirLight.shadow.camera.far  = 500;
 scene.add(dirLight);
 
-// Fill light from opposite side - softens harsh shadows without washing out colors
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
-fillLight.position.set(-5, 5, -5);
+// Fill directional light (opposite side, no shadows)
+const fillLight = new THREE.DirectionalLight(0xffffff, 1.0);
+fillLight.position.set(-5, 3, -5);
 scene.add(fillLight);
 
 // Keep scene reference for camera add (needed by OrbitControls)
@@ -92,8 +93,8 @@ function updateEnvironment(isCouch) {
   } else {
     // No env map for standard models - direct lights accurately reproduce material colors
     ambientLight.intensity = 1.0;
-    dirLight.intensity = 2.0;
-    fillLight.intensity = 0.5;
+    dirLight.intensity = 3.0;
+    fillLight.intensity = 1.0;
     scene.environment = null;
   }
 }
