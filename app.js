@@ -32,6 +32,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.07;
 controls.minDistance   = 0.1;
 controls.maxDistance   = 5000;
+controls.enablePan     = false; // Disable camera panning
 controls.autoRotate    = true;
 controls.autoRotateSpeed = 1.0;
 
