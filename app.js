@@ -421,6 +421,9 @@ function loadModel(fileOrUrl, fileName) {
     // Apply configuration immediately
     applyCurrentConfig();
 
+    // Ensure the canvas resizing completes after layout reflow
+    resize();
+
   }, undefined, (err) => {
     if (!isUrl) URL.revokeObjectURL(url);
     if (myGen !== loadGeneration) return;
