@@ -42,14 +42,15 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 scene.add(ambientLight);
 
 // Key directional light (casts shadows)
-const dirLight = new THREE.DirectionalLight(0xffffff, 3.0);
-dirLight.position.set(5, 10, 7.5);
+const dirLight = new THREE.DirectionalLight(0xffffff, 2.2);
+dirLight.position.set(3, 8, 3); // Shifted more top-down for contact shadowing
 dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.mapSize.set(1024, 1024); // Lower size + higher radius yields softer shadow edges
 dirLight.shadow.camera.near = 0.1;
 dirLight.shadow.camera.far  = 500;
+dirLight.shadow.radius = 6.0; // High blur radius for diffused, soft shadows
 // Eliminate circular shadow acne artifacts on flat/curved surfaces
-dirLight.shadow.bias = -0.0005;
+dirLight.shadow.bias = -0.001;
 dirLight.shadow.normalBias = 0.05;
 scene.add(dirLight);
 
