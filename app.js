@@ -14,7 +14,7 @@ const wrap    = document.getElementById('canvas-wrap');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type    = THREE.PCFShadowMap;
+renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
 renderer.outputEncoding    = THREE.sRGBEncoding;
 // Match Three.js Editor renderer settings
 renderer.physicallyCorrectLights = true;
@@ -45,7 +45,7 @@ scene.add(ambientLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 2.2);
 dirLight.position.set(0.5, 10, 0.5); // Overhead placement to cast shadows directly under wheels
 dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(512, 512); // Low resolution + high blur radius = super soft shadows
+dirLight.shadow.mapSize.set(2048, 2048); // High resolution for crisp, pixel-free soft shadow details
 dirLight.shadow.camera.near = 0.1;
 dirLight.shadow.camera.far  = 500;
 dirLight.shadow.radius = 9.0; // Max radius for diffused contact shadow look
