@@ -347,9 +347,9 @@ function loadModel(fileOrUrl, fileName) {
     dirLight.shadow.camera.bottom = -d;
     dirLight.shadow.camera.updateProjectionMatrix();
 
-    // Fit camera safely
+    // Fit camera safely (closer zoom-in version)
     const fov    = camera.fov * (Math.PI / 180);
-    let dist     = (maxSz / 2) / Math.tan(fov / 2) * 1.8;
+    let dist     = (maxSz / 2) / Math.tan(fov / 2) * 1.25;
     if (!dist || isNaN(dist) || dist < 0.1) dist = 2.0;
     
     const target = box2.getCenter(new THREE.Vector3());
