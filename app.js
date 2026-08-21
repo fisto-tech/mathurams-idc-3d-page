@@ -383,8 +383,11 @@ function loadModel(fileOrUrl, fileName) {
     showToast(`Loaded: "${name}" | Size: ${maxSz.toFixed(2)}m | Cam Dist: ${dist.toFixed(2)}m`);
 
     // Hide/show sections dynamically based on model type
-    const isIcu = name.toLowerCase().includes('icu') || productName === 'ICU Cot';
-    const isCouch = name.toLowerCase().includes('couch') || name.toLowerCase().includes('examination') || productName === 'Deluxe Examination Couch';
+    const isIcu = productName === 'ICU Cot' || name.toLowerCase().includes('icu');
+    const isFowler = productName === 'Fowler Cot' || name.toLowerCase().includes('fowler');
+    const isCouch = productName === 'Deluxe Examination Couch' || name.toLowerCase().includes('couch');
+    const isHiLo = productName === 'Hi-Lo Structure' || name.toLowerCase().includes('hi-lo') || name.toLowerCase().includes('strecher');
+    const isLabor = productName === 'Deluxe Double Door Attender Cot' || name.toLowerCase().includes('labor-cot') || name.toLowerCase().includes('double-door');
     
     updateEnvironment(isCouch);
     
@@ -393,27 +396,75 @@ function loadModel(fileOrUrl, fileName) {
     const sectionMattress = document.getElementById('config-section-mattress');
     const sectionWheel = document.getElementById('config-section-wheel');
     const sectionOperation = document.getElementById('config-section-operation');
+    const couchCabinetSection = document.getElementById('couch-cabinet-color-section');
+    const couchDrawerSection = document.getElementById('couch-drawer-color-section');
 
-    if (isCouch) {
-      if (sectionHeadFoot) sectionHeadFoot.style.display = 'none';
-      if (sectionSideRails) sectionSideRails.style.display = 'none';
-      if (sectionWheel) sectionWheel.style.display = 'none';
-      if (sectionOperation) sectionOperation.style.display = 'none';
-      
-      const mattressRadioGroup = sectionMattress?.querySelector('.radio-group');
-      if (mattressRadioGroup) mattressRadioGroup.style.display = 'none';
-      const mattressTitle = sectionMattress?.querySelector('.config-section-title');
-      if (mattressTitle) mattressTitle.style.display = 'none';
-    } else {
+    // Default: Reset all display properties
+    if (sectionHeadFoot) sectionHeadFoot.style.display = 'none';
+    if (sectionSideRails) sectionSideRails.style.display = 'none';
+    if (sectionMattress) sectionMattress.style.display = 'none';
+    if (sectionWheel) sectionWheel.style.display = 'none';
+    if (sectionOperation) sectionOperation.style.display = 'none';
+    if (couchCabinetSection) couchCabinetSection.style.display = 'none';
+    if (couchDrawerSection) couchDrawerSection.style.display = 'none';
+
+    // Enable mattress type selector
+    const mattressRadioGroup = sectionMattress?.querySelector('.radio-group');
+    const mattressTitle = sectionMattress?.querySelector('.config-section-title');
+    if (mattressRadioGroup) mattressRadioGroup.style.display = 'flex';
+    if (mattressTitle) mattressTitle.style.display = 'block';
+
+    const toggleCardVisibility = (section, allowedValues) => {
+      document.querySelectorAll(`.config-card[data-section="${section}"]`).forEach(card => {
+        const isAllowed = allowedValues.includes(card.dataset.value);
+        card.style.display = isAllowed ? 'flex' : 'none';
+      });
+    };
+
+    if (isIcu) {
       if (sectionHeadFoot) sectionHeadFoot.style.display = 'flex';
       if (sectionSideRails) sectionSideRails.style.display = 'flex';
-      if (sectionWheel) sectionWheel.style.display = isIcu ? 'none' : 'flex';
+      if (sectionMattress) sectionMattress.style.display = 'flex';
       if (sectionOperation) sectionOperation.style.display = 'flex';
-      
-      const mattressRadioGroup = sectionMattress?.querySelector('.radio-group');
-      if (mattressRadioGroup) mattressRadioGroup.style.display = 'flex';
-      const mattressTitle = sectionMattress?.querySelector('.config-section-title');
-      if (mattressTitle) mattressTitle.style.display = 'block';
+      toggleCardVisibility('siderails', ['ms', 'ssplain', 'abs', 'aluminium', 'sscollapsible']);
+      toggleCardVisibility('headfoot', ['ms', 'ss', 'abs1', 'abs2']);
+    } else if (isFowler) {
+      if (sectionHeadFoot) sectionHeadFoot.style.display = 'flex';
+      if (sectionSideRails) sectionSideRails.style.display = 'flex';
+      if (sectionMattress) sectionMattress.style.display = 'flex';
+      if (sectionWheel) sectionWheel.style.display = 'flex';
+      if (sectionOperation) sectionOperation.style.display = 'flex';
+      toggleCardVisibility('siderails', ['ssplain', 'abs', 'aluminium']);
+      toggleCardVisibility('headfoot', ['ms', 'ss', 'abs1', 'abs2']);
+    } else if (isCouch) {
+      if (sectionMattress) {
+        sectionMattress.style.display = 'flex';
+        if (mattressRadioGroup) mattressRadioGroup.style.display = 'none';
+        if (mattressTitle) mattressTitle.style.display = 'none';
+      }
+      if (couchCabinetSection) couchCabinetSection.style.display = 'flex';
+      if (couchDrawerSection) couchDrawerSection.style.display = 'flex';
+    } else if (isHiLo) {
+      if (sectionSideRails) sectionSideRails.style.display = 'flex';
+      if (sectionMattress) {
+        sectionMattress.style.display = 'flex';
+        if (mattressRadioGroup) mattressRadioGroup.style.display = 'none';
+        if (mattressTitle) mattressTitle.style.display = 'none';
+      }
+      toggleCardVisibility('siderails', ['ssplain', 'abs', 'aluminium']);
+    } else if (isLabor) {
+      if (sectionHeadFoot) {
+        sectionHeadFoot.style.display = 'flex';
+        toggleCardVisibility('headfoot', ['ss', 'abs1', 'abs2']);
+      }
+      if (sectionSideRails) sectionSideRails.style.display = 'flex';
+      if (sectionMattress) {
+        sectionMattress.style.display = 'flex';
+        if (mattressRadioGroup) mattressRadioGroup.style.display = 'none';
+        if (mattressTitle) mattressTitle.style.display = 'none';
+      }
+      if (sectionWheel) sectionWheel.style.display = 'flex';
+      toggleCardVisibility('siderails', ['ssplain', 'abs', 'aluminium']);
     }
 
     // Automatically update heading serial letters (A, B, C, D, etc.) dynamically based on visibility
