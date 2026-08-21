@@ -19,10 +19,10 @@ Open the links in your browser with the corresponding hash parameters (`#model-n
 ### 🛠️ Category 1: Customisation Models
 *Includes the left configuration panel to toggle railings, mattresses, side panels, and select custom frame/upholstery colors.*
 
-* **Semi Fowler Cot (Customisation)**: [`index.html#fowler-cot`](file:///f:/Sham_Files/Sham/Projects/2026/web/mathurams-idc-3d/index.html#fowler-cot)
+* **Fowler Cot (Customisation)**: [`index.html#fowler-cot`](file:///f:/Sham_Files/Sham/Projects/2026/web/mathurams-idc-3d/index.html#fowler-cot)
 * **ICU Cot**: [`index.html#icu`](file:///f:/Sham_Files/Sham/Projects/2026/web/mathurams-idc-3d/index.html#icu)
-* **Deluxe Double Door Attender Cot**: [`index.html#labor-cot`](file:///f:/Sham_Files/Sham/Projects/2026/web/mathurams-idc-3d/index.html#labor-cot)
-* **Hi-Lo Structure**: [`index.html#hi-lo`](file:///f:/Sham_Files/Sham/Projects/2026/web/mathurams-idc-3d/index.html#hi-lo)
+* **Labor Cot**: [`index.html#labor-cot`](file:///f:/Sham_Files/Sham/Projects/2026/web/mathurams-idc-3d/index.html#labor-cot)
+* **Hi-Lo Strecher**: [`index.html#hi-lo`](file:///f:/Sham_Files/Sham/Projects/2026/web/mathurams-idc-3d/index.html#hi-lo)
 * **Deluxe Examination Couch**: [`index.html#couch`](file:///f:/Sham_Files/Sham/Projects/2026/web/mathurams-idc-3d/index.html#couch)
 
 ### 👁️ Category 2: View-Only Models

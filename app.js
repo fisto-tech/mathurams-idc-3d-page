@@ -1676,13 +1676,13 @@ try {
     productName = 'Fowler Cot';
   } else if (modelQuery.includes('hi-lo') || modelQuery.includes('hilo') || modelQuery.includes('strecher')) {
     defaultModel = 'assets/models/customisation-models/hi-lo-strecher.glb';
-    productName = 'Hi-Lo Structure';
+    productName = 'Hi-Lo Strecher';
   } else if (modelQuery.includes('icu')) {
     defaultModel = 'assets/models/customisation-models/icu-cot.glb';
     productName = 'ICU Cot';
   } else if (modelQuery.includes('labor-cot') || modelQuery.includes('deluxe-double-door') || modelQuery.includes('deluxe_double_door')) {
     defaultModel = 'assets/models/customisation-models/labor-cot.glb';
-    productName = 'Deluxe Double Door Attender Cot';
+    productName = 'Labor Cot';
   } else if (modelQuery.includes('over-bed-table') || modelQuery.includes('overbed')) {
     defaultModel = 'assets/models/view-only-models/over-bed-table.glb';
     productName = 'Over Bed Table';
