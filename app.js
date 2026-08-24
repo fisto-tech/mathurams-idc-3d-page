@@ -28,10 +28,28 @@ let selectedMesh    = null;      // key or null
 let productName     = 'Semi Fowler Cot';
 let autoRotateTimeout  = null;
 let resetCameraTimeout = null;
+let initialAutoRotateTimeout = null;
+let modelInitialOrbit  = 'unset';
+let modelInitialTarget = 'unset';
+let modelInitialFov    = 'auto';
+
+const initialCameraAngles = {
+  'fowler-cot': { orbit: '329.9deg 73.02deg 9.707m', target: 'unset', fov: '30deg' },
+  'icu': { orbit: '324.7deg 66.7deg 10.81m', target: 'unset', fov: '30deg' },
+  'labor-cot': { orbit: '391.9deg 58.8deg 27.2m', target: 'unset', fov: '30deg' },
+  'hi-lo': { orbit: '320.4deg 64.33deg 9.952m', target: 'unset', fov: '30deg' },
+  'couch': { orbit: '358deg 79.74deg 4.469m', target: 'unset', fov: '30deg' },
+  'semi-fowler': { orbit: '29.11deg 67.49deg 9.675m', target: 'unset', fov: '30deg' },
+  'over-bed-table': { orbit: '267deg 42.99deg 4.584m', target: 'unset', fov: '30deg' },
+  'attender-cot-deluxe': { orbit: '-1.294deg 67.49deg 7.96m', target: 'unset', fov: '30deg' },
+  'attender-cot': { orbit: '-1.294deg 67.49deg 7.992m', target: 'unset', fov: '30deg' },
+  'bedside-locker-deluxe': { orbit: '163.1deg 69.86deg 4.366m', target: 'unset', fov: '30deg' },
+  'bedside-locker': { orbit: '74.18deg 71.44deg 4.057m', target: 'unset', fov: '30deg' }
+};
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-const bgColors = ['#bababa', '#FFFFFF', '#F8FAFC', '#E2E8F0', '#F1F5F9'];
+const bgColors = ['#424357', '#FFFFFF', '#F8FAFC', '#E2E8F0', '#F1F5F9'];
 let bgIndex = 0;
 let wireframeMode = false;
 
@@ -110,6 +128,49 @@ function loadModel(fileOrUrl, fileName) {
     drawer: false
   };
 
+  // Set initial camera configuration based on model name
+  const lowerName2 = name.toLowerCase();
+  let modelKey = 'semi-fowler';
+  if (lowerName2.includes('icu')) modelKey = 'icu';
+  else if (lowerName2.includes('fowler-cot') || (lowerName2.includes('fowler') && !lowerName2.includes('semi'))) modelKey = 'fowler-cot';
+  else if (lowerName2.includes('labor')) modelKey = 'labor-cot';
+  else if (lowerName2.includes('hi-lo') || lowerName2.includes('hi_lo') || lowerName2.includes('hilo')) modelKey = 'hi-lo';
+  else if (lowerName2.includes('couch') || lowerName2.includes('examination')) modelKey = 'couch';
+  else if (lowerName2.includes('over-bed-table') || lowerName2.includes('overbed')) modelKey = 'over-bed-table';
+  else if (lowerName2.includes('attender-cot-deluxe') || lowerName2.includes('attender_cot_deluxe')) modelKey = 'attender-cot-deluxe';
+  else if (lowerName2.includes('attender') && !lowerName2.includes('deluxe')) modelKey = 'attender-cot';
+  else if (lowerName2.includes('bedside-locker-deluxe') || lowerName2.includes('sidelocker_deluxe') || lowerName2.includes('sidelocker-deluxe')) modelKey = 'bedside-locker-deluxe';
+  else if (lowerName2.includes('bedside-locker') || lowerName2.includes('locker_plain') || lowerName2.includes('locker-plain')) modelKey = 'bedside-locker';
+  
+  const camConfig = initialCameraAngles[modelKey];
+  if (camConfig) {
+    modelInitialOrbit = camConfig.orbit;
+    modelInitialTarget = camConfig.target;
+    modelInitialFov = camConfig.fov || 'auto';
+  } else {
+    modelInitialOrbit = 'unset';
+    modelInitialTarget = 'unset';
+    modelInitialFov = 'auto';
+  }
+
+  // Assign model-viewer camera options
+  modelViewer.cameraOrbit = modelInitialOrbit;
+  modelViewer.cameraTarget = modelInitialTarget;
+  modelViewer.fieldOfView = modelInitialFov;
+
+  // Handle auto-rotate delay on load
+  modelViewer.autoRotate = false;
+  clearTimeout(initialAutoRotateTimeout);
+  clearTimeout(autoRotateTimeout);
+  clearTimeout(resetCameraTimeout);
+
+  initialAutoRotateTimeout = setTimeout(() => {
+    const cb = document.getElementById('auto-rotate-toggle-cb');
+    if (cb && cb.checked) {
+      modelViewer.autoRotate = true;
+    }
+  }, 5000);
+
   // Assign source to Google's model-viewer
   modelViewer.src = url;
 }
@@ -146,6 +207,9 @@ modelViewer.addEventListener('load', () => {
         if (mat.isMeshStandardMaterial) {
           mat.envMapIntensity = 1.5;
           mat.needsUpdate = true;
+        }
+        if (childName === 'ms_head&foot_1' && (productName === 'Fowler Cot' || productName === 'ICU Cot') && mat.color) {
+          mat.color.setHex(0xafafaf);
         }
       });
     }
@@ -651,6 +715,7 @@ function focusSection(section) {
     const zoomRadius = maxSz * 2.0;
     
     // Zoom in on target
+    modelViewer.fieldOfView = 'auto';
     modelViewer.cameraTarget = `${centre.x}m ${centre.y}m ${centre.z}m`;
     modelViewer.cameraOrbit = `${theta} ${phi} ${zoomRadius}m`;
     
@@ -661,8 +726,9 @@ function focusSection(section) {
     
     // 2. After 2 seconds, reset camera back to original position
     resetCameraTimeout = setTimeout(() => {
-      modelViewer.cameraOrbit = 'unset';
-      modelViewer.cameraTarget = 'unset';
+      modelViewer.cameraOrbit = modelInitialOrbit;
+      modelViewer.cameraTarget = modelInitialTarget;
+      modelViewer.fieldOfView = modelInitialFov;
     }, 2000);
     
     // 3. After 4.5 seconds, restore auto-rotation if it was active
@@ -731,7 +797,7 @@ function setDefaultConfigForModel(name) {
   } else if (lower.includes('fowler')) {
     defaults = {
       headfoot: 'ms',
-      siderails: 'ms',
+      siderails: 'ssplain',
       mattress: 'zip',
       wheel: 'without',
       operation: 'manual'
@@ -1217,7 +1283,6 @@ document.querySelectorAll('.couch-cabinet-color').forEach(swatch => {
     swatch.classList.add('active');
     userColorsChanged.cabinet = true;
     applyCurrentConfig();
-    focusSection('cabinet');
   });
 });
 
@@ -1252,7 +1317,6 @@ document.querySelectorAll('.couch-drawer-color').forEach(swatch => {
     swatch.classList.add('active');
     userColorsChanged.drawer = true;
     applyCurrentConfig();
-    focusSection('drawer');
   });
 });
 
@@ -1287,7 +1351,6 @@ document.querySelectorAll('.abs-panel-color').forEach(swatch => {
     swatch.classList.add('active');
     userColorsChanged.absPanel = true;
     applyCurrentConfig();
-    focusSection('headfoot');
   });
 });
 
@@ -1322,7 +1385,6 @@ document.querySelectorAll('.abs-rail-color').forEach(swatch => {
     swatch.classList.add('active');
     userColorsChanged.absRail = true;
     applyCurrentConfig();
-    focusSection('siderails');
   });
 });
 
@@ -1389,8 +1451,9 @@ document.getElementById('mesh-search').addEventListener('input', (e) => {
 
 // == HUD ======================================================================
 document.getElementById('reset-cam-btn').addEventListener('click', () => {
-  modelViewer.cameraOrbit = 'unset';
-  modelViewer.cameraTarget = 'unset';
+  modelViewer.cameraOrbit = modelInitialOrbit;
+  modelViewer.cameraTarget = modelInitialTarget;
+  modelViewer.fieldOfView = modelInitialFov;
   showToast('Camera reset');
 });
 
