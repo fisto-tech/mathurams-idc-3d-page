@@ -26,6 +26,8 @@ let isCurrentModelViewOnly = false;
 let meshMap         = {};        // key → { meshes, visible, name, triCount }
 let selectedMesh    = null;      // key or null
 let productName     = 'Semi Fowler Cot';
+let autoRotateTimeout  = null;
+let resetCameraTimeout = null;
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -528,6 +530,150 @@ function focusMesh(key, itemEl, forceSelect = false) {
   }
 }
 
+// == Focus camera on a category section =========================================
+function focusSection(section) {
+  if (isCurrentModelViewOnly) return;
+  
+  // 1. Temporarily pause auto-rotate
+  const cb = document.getElementById('auto-rotate-toggle-cb');
+  const isAutoRotateActive = cb ? cb.checked : modelViewer.autoRotate;
+  
+  if (isAutoRotateActive) {
+    modelViewer.autoRotate = false;
+  }
+  
+  // Clear any existing timeouts to prevent overlapping animations
+  clearTimeout(autoRotateTimeout);
+  clearTimeout(resetCameraTimeout);
+  
+  const matchingMeshes = [];
+  
+  Object.keys(meshMap).forEach(key => {
+    const entry = meshMap[key];
+    if (!entry.visible) return;
+    
+    const name = entry.name.toLowerCase();
+    let match = false;
+    
+    if (section === 'headfoot') {
+      if (name.includes('head') || name.includes('foot') || name.includes('board') || name.includes('panel') || name.includes('end')) {
+        match = true;
+      }
+    } else if (section === 'siderails') {
+      if (name.includes('rail') || name.includes('side') || name.includes('collapsible') || name.includes('colapsable') || name.includes('ac-') || name.includes('ac_') || name.includes('pipe')) {
+        match = true;
+      }
+    } else if (section === 'wheel') {
+      if (name.includes('wheel') || name.includes('castor') || name.includes('caster') || name === 'bush_1') {
+        match = true;
+      }
+    } else if (section === 'operation') {
+      const isRemoteActive = document.querySelector('input[name="operation"]:checked')?.value === 'remote';
+      if (isRemoteActive) {
+        if (name.includes('remote') || name.includes('handset') || name.includes('remote_cradle')) {
+          match = true;
+        }
+      } else {
+        if (name.includes('crank') || name.includes('manual') || name.includes('handle')) {
+          match = true;
+        }
+      }
+    } else if (section === 'mattress') {
+      if (name.includes('mattress') || name.includes('mattres') || name.includes('zipper') || name.includes('zip') || name.includes('cube.020') || name.includes('plain')) {
+        match = true;
+      }
+    } else if (section === 'cabinet') {
+      if (name === 'cabinent_1' || name === 'mini_cabinent' || name === 'cabinent') {
+        match = true;
+      }
+    } else if (section === 'drawer') {
+      if (name.includes('drawer') || name.includes('cupboard')) {
+        match = true;
+      }
+    }
+    
+    if (match) {
+      matchingMeshes.push(...entry.meshes);
+    }
+  });
+  
+  if (section === 'operation' && matchingMeshes.length === 0) {
+    Object.keys(meshMap).forEach(key => {
+      const entry = meshMap[key];
+      if (!entry.visible) return;
+      const name = entry.name.toLowerCase();
+      if (name.includes('motor') || name.includes('remote') || name.includes('crank') || name.includes('manual') || name.includes('handle')) {
+        matchingMeshes.push(...entry.meshes);
+      }
+    });
+  }
+  
+  if (matchingMeshes.length === 0) {
+    if (isAutoRotateActive) modelViewer.autoRotate = true;
+    return;
+  }
+  
+  const box = new THREE.Box3();
+  matchingMeshes.forEach(mesh => {
+    box.expandByObject(mesh);
+  });
+  
+  if (box.isEmpty()) {
+    if (isAutoRotateActive) modelViewer.autoRotate = true;
+    return;
+  }
+  
+  const centre = box.getCenter(new THREE.Vector3());
+  const size   = box.getSize(new THREE.Vector3());
+  
+  let theta = '45deg';
+  let phi   = '75deg';
+  
+  if (section === 'headfoot') {
+    theta = '0deg';
+    phi   = '75deg';
+  } else if (section === 'siderails') {
+    theta = '90deg';
+    phi   = '75deg';
+  } else if (section === 'wheel') {
+    theta = '45deg';
+    phi   = '85deg';
+  } else if (section === 'operation') {
+    theta = '135deg';
+    phi   = '70deg';
+  } else if (section === 'cabinet' || section === 'drawer') {
+    theta = '45deg';
+    phi   = '70deg';
+  }
+  
+  const maxSz = Math.max(size.x, size.y, size.z);
+  if (isFinite(maxSz) && maxSz > 0) {
+    const zoomRadius = maxSz * 2.0;
+    
+    // Zoom in on target
+    modelViewer.cameraTarget = `${centre.x}m ${centre.y}m ${centre.z}m`;
+    modelViewer.cameraOrbit = `${theta} ${phi} ${zoomRadius}m`;
+    
+    // Blink highlight meshes in this section
+    matchingMeshes.forEach(mesh => {
+      blinkMesh(mesh);
+    });
+    
+    // 2. After 2 seconds, reset camera back to original position
+    resetCameraTimeout = setTimeout(() => {
+      modelViewer.cameraOrbit = 'unset';
+      modelViewer.cameraTarget = 'unset';
+    }, 2000);
+    
+    // 3. After 4.5 seconds, restore auto-rotation if it was active
+    autoRotateTimeout = setTimeout(() => {
+      if (isAutoRotateActive && cb && cb.checked) {
+        modelViewer.autoRotate = true;
+      }
+    }, 4500);
+  }
+}
+
 // == Stats ====================================================================
 function updateStats() {
   const keys    = Object.keys(meshMap);
@@ -726,6 +872,15 @@ function applyCurrentConfig() {
       }
     }
 
+    // Labor Cot basecot001 visibility logic based on wheel type selection
+    if (name === 'basecot001' && productName === 'Labor Cot') {
+      if (wheel === 'wheel') {
+        visible = false;
+      } else {
+        visible = true;
+      }
+    }
+
     // Operation matching
     if (name.includes('motor') || name.includes('remote') || name.includes('crank') || name.includes('manual') || name.includes('handle')) {
       if (operation === 'manual') {
@@ -762,6 +917,19 @@ function applyCurrentConfig() {
       applyCouchDrawerColor(activeCouchDrawerColor);
     }
   }
+
+  // Direct basecot001 parent group culling for Labor Cot
+  const symbols = Object.getOwnPropertySymbols(modelViewer);
+  const sceneSymbol = symbols.find((s) => s.description === 'scene');
+  const internalScene = modelViewer[sceneSymbol];
+  if (internalScene) {
+    internalScene.traverse(child => {
+      if ((child.name || '').toLowerCase().includes('basecot001') && productName === 'Labor Cot') {
+        child.visible = (wheel !== 'wheel');
+      }
+    });
+  }
+
   requestRender();
 }
 
@@ -794,7 +962,7 @@ function applyMattressColor(hexColorStr) {
     const entry = meshMap[key];
     const name = entry.name.toLowerCase();
     if (entry.visible && (name.includes('mattress') || name.includes('mattres') || name.includes('zipper') || name.includes('zip') || name.includes('cube.020'))) {
-      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex, entry.name));
+      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex, null, true));
     }
   });
 }
@@ -980,11 +1148,16 @@ document.querySelectorAll('.config-card').forEach(card => {
     document.querySelectorAll(`.config-card[data-section="${section}"]`).forEach(c => c.classList.remove('active'));
     card.classList.add('active');
     applyCurrentConfig();
+    focusSection(section);
   });
 });
 
 document.querySelectorAll('input[type="radio"]').forEach(radio => {
-  radio.addEventListener('change', applyCurrentConfig);
+  radio.addEventListener('change', () => {
+    applyCurrentConfig();
+    const section = radio.name;
+    focusSection(section);
+  });
 });
 
 document.querySelectorAll('.color-swatch:not(.mattress-color):not(.couch-cabinet-color):not(.couch-drawer-color):not(.abs-panel-color):not(.abs-rail-color)').forEach(swatch => {
@@ -1044,6 +1217,7 @@ document.querySelectorAll('.couch-cabinet-color').forEach(swatch => {
     swatch.classList.add('active');
     userColorsChanged.cabinet = true;
     applyCurrentConfig();
+    focusSection('cabinet');
   });
 });
 
@@ -1078,6 +1252,7 @@ document.querySelectorAll('.couch-drawer-color').forEach(swatch => {
     swatch.classList.add('active');
     userColorsChanged.drawer = true;
     applyCurrentConfig();
+    focusSection('drawer');
   });
 });
 
@@ -1112,6 +1287,7 @@ document.querySelectorAll('.abs-panel-color').forEach(swatch => {
     swatch.classList.add('active');
     userColorsChanged.absPanel = true;
     applyCurrentConfig();
+    focusSection('headfoot');
   });
 });
 
@@ -1146,6 +1322,7 @@ document.querySelectorAll('.abs-rail-color').forEach(swatch => {
     swatch.classList.add('active');
     userColorsChanged.absRail = true;
     applyCurrentConfig();
+    focusSection('siderails');
   });
 });
 
@@ -1343,6 +1520,7 @@ function blinkMesh(mesh) {
       mat.color.setHex(0xEA580C);
     }
   });
+  requestRender();
 
   setTimeout(() => {
     originalColors.forEach(({ mat, type, val }) => {
@@ -1352,6 +1530,7 @@ function blinkMesh(mesh) {
         mat.color.copy(val);
       }
     });
+    requestRender();
   }, 350);
 }
 
@@ -1546,3 +1725,11 @@ loadModel(defaultModel);
 window.addEventListener('hashchange', () => {
   window.location.reload();
 });
+
+// == Auto Rotate Toggle Checkbox Listener =====================================
+const autoRotateToggle = document.getElementById('auto-rotate-toggle-cb');
+if (autoRotateToggle) {
+  autoRotateToggle.addEventListener('change', () => {
+    modelViewer.autoRotate = autoRotateToggle.checked;
+  });
+}
