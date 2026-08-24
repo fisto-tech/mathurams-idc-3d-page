@@ -1106,6 +1106,15 @@ function applyCurrentConfig() {
       if (wheel === 'without' && !isIcu && !isCouch) visible = false;
     }
 
+    // Fowler Cot bush_1 visibility logic based on wheel type selection
+    if (name === 'bush_1' && productName === 'Fowler Cot') {
+      if (wheel === 'wheel') {
+        visible = false;
+      } else {
+        visible = true;
+      }
+    }
+
     // Operation matching
     if (name.includes('motor') || name.includes('remote') || name.includes('crank') || name.includes('manual') || name.includes('handle')) {
       if (operation === 'manual') {
@@ -1271,11 +1280,11 @@ function applyCouchCabinetColor(hexColorStr) {
     const entry = meshMap[key];
     const name = entry.name.toLowerCase();
     
-    const isCabinet = name.includes('cabinet') || name.includes('cabin') || name.includes('footer') || name.includes('mini_drawer') || name.includes('mini-drawer');
+    const isCabinet = name === 'cabinent_1' || name === 'mini_cabinent' || name === 'cabinent';
     
-    if (entry.visible && isCabinet) {
-      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex, entry.name));
-    }
+    if (isCabinet) {    
+      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex, null, true));
+    }   
   });
 }
 
@@ -1290,13 +1299,13 @@ function applyCouchDrawerColor(hexColorStr) {
     const isDrawer = name.includes('drawer') || name.includes('cupboard');
     const isMiniDrawer = name.includes('mini_drawer') || name.includes('mini-drawer');
     
-    if (entry.visible && isDrawer && !isMiniDrawer) {
-      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex, entry.name));
+    if (isDrawer && !isMiniDrawer) {
+      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex, null, true));
     }
   });
 }
 
-function setColorOnMesh(mesh, hex, targetMaterialName) {
+function setColorOnMesh(mesh, hex, targetMaterialName, forceColor = false) {
   if (!mesh.material) return;
   
   // Helper to check if a material represents metal or a handle
@@ -1343,7 +1352,7 @@ function setColorOnMesh(mesh, hex, targetMaterialName) {
       if (targetMaterialName && matName !== targetMaterialName) {
         return mat; // Keep original material untouched if it doesn't match target
       }
-      if (isMetalOrHandleMaterial(mat)) {
+      if (!forceColor && isMetalOrHandleMaterial(mat)) {
         return mat; // Keep original metal/handle material untouched
       }
       const cloned = cloneMat(mat);
@@ -1356,7 +1365,7 @@ function setColorOnMesh(mesh, hex, targetMaterialName) {
     if (targetMaterialName && matName !== targetMaterialName) {
       return;
     }
-    if (isMetalOrHandleMaterial(mesh.material)) {
+    if (!forceColor && isMetalOrHandleMaterial(mesh.material)) {
       return; // Keep original metal/handle material untouched
     }
     mesh.material = cloneMat(mesh.material);
