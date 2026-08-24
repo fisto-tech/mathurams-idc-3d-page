@@ -26,6 +26,11 @@
   <link rel="icon" href="assets/images/logo-icon.svg" />
   <title>Mathurams IDC 3D Customisation</title>
   <link rel="stylesheet" href="style.css" />
+  <script>
+    self.ModelViewerElement = self.ModelViewerElement || {};
+    self.ModelViewerElement.meshoptDecoderLocation = 'https://unpkg.com/meshoptimizer@0.17.0/meshopt_decoder.js';
+  </script>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"></script>
 </head>
 <body>
 
@@ -368,7 +373,7 @@
 
   <!-- Canvas Wrap -->
   <div id="canvas-wrap">
-    <canvas id="three-canvas"></canvas>
+    <model-viewer id="three-canvas" alt="Mathurams 3D Product" camera-controls touch-action="none" shadow-intensity="1" auto-rotate></model-viewer>
 
     <!-- Auto Rotate Switch in Top Right -->
     <div id="auto-rotate-card">

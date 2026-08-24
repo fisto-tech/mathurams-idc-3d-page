@@ -1,215 +1,15 @@
 import * as THREE from 'three';
 
-// Polyfill to add CPU-side dequantization support for quantized attributes in Three.js v0.128.0
-(function() {
-  function denormalize(value, array) {
-    if (array instanceof Float32Array || array instanceof Float64Array) return value;
-    if (array instanceof Int8Array) return Math.max(value / 127, -1);
-    if (array instanceof Uint8Array) return value / 255;
-    if (array instanceof Int16Array) return Math.max(value / 32767, -1);
-    if (array instanceof Uint16Array) return value / 65535;
-    if (array instanceof Int32Array) return Math.max(value / 2147483647, -1);
-    if (array instanceof Uint32Array) return value / 4294967295;
-    return value;
-  }
-
-  const originalGetX = THREE.BufferAttribute.prototype.getX;
-  const originalGetY = THREE.BufferAttribute.prototype.getY;
-  const originalGetZ = THREE.BufferAttribute.prototype.getZ;
-  const originalGetW = THREE.BufferAttribute.prototype.getW;
-
-  THREE.BufferAttribute.prototype.getX = function(index) {
-    let val = originalGetX.call(this, index);
-    if (this.normalized) val = denormalize(val, this.array);
-    return val;
-  };
-  THREE.BufferAttribute.prototype.getY = function(index) {
-    let val = originalGetY.call(this, index);
-    if (this.normalized) val = denormalize(val, this.array);
-    return val;
-  };
-  THREE.BufferAttribute.prototype.getZ = function(index) {
-    let val = originalGetZ.call(this, index);
-    if (this.normalized) val = denormalize(val, this.array);
-    return val;
-  };
-  THREE.BufferAttribute.prototype.getW = function(index) {
-    let val = originalGetW.call(this, index);
-    if (this.normalized) val = denormalize(val, this.array);
-    return val;
-  };
-
-  const originalIGetX = THREE.InterleavedBufferAttribute.prototype.getX;
-  const originalIGetY = THREE.InterleavedBufferAttribute.prototype.getY;
-  const originalIGetZ = THREE.InterleavedBufferAttribute.prototype.getZ;
-  const originalIGetW = THREE.InterleavedBufferAttribute.prototype.getW;
-
-  THREE.InterleavedBufferAttribute.prototype.getX = function(index) {
-    let val = originalIGetX.call(this, index);
-    if (this.normalized) val = denormalize(val, this.data.array);
-    return val;
-  };
-  THREE.InterleavedBufferAttribute.prototype.getY = function(index) {
-    let val = originalIGetY.call(this, index);
-    if (this.normalized) val = denormalize(val, this.data.array);
-    return val;
-  };
-  THREE.InterleavedBufferAttribute.prototype.getZ = function(index) {
-    let val = originalIGetZ.call(this, index);
-    if (this.normalized) val = denormalize(val, this.data.array);
-    return val;
-  };
-  THREE.InterleavedBufferAttribute.prototype.getW = function(index) {
-    let val = originalIGetW.call(this, index);
-    if (this.normalized) val = denormalize(val, this.data.array);
-    return val;
-  };
-})();
-
-import { OrbitControls } from 'https://unpkg.com/three@0.128.0/examples/jsm/controls/OrbitControls.js';
-import { FBXLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/FBXLoader.js';
-import { GLTFLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/DRACOLoader.js';
-import { OBJLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/OBJLoader.js';
-import { GLTFExporter } from 'https://unpkg.com/three@0.128.0/examples/jsm/exporters/GLTFExporter.js';
-import { RGBELoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/RGBELoader.js';
-import { KTX2Loader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/KTX2Loader.js';
-import { MeshoptDecoder } from 'https://unpkg.com/three@0.128.0/examples/jsm/libs/meshopt_decoder.module.js';
-
-// == Scene ====================================================================
-const canvas  = document.getElementById('three-canvas');
-const wrap    = document.getElementById('canvas-wrap');
-
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
-renderer.outputEncoding    = THREE.sRGBEncoding;
-// Match Three.js Editor renderer settings
-renderer.physicallyCorrectLights = true;
-renderer.toneMapping       = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.25;
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xb8b8b8);
-
-const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 10000);
-camera.position.set(5, 4, 7);
-
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.07;
-controls.minDistance   = 0.1;
-controls.maxDistance   = 5000;
-controls.enablePan     = false; // Disable camera panning
-controls.autoRotate    = false;
-controls.autoRotateSpeed = 1.0;
-
-// == Lights ===================================================================
-// Replicates Three.js Editor Default Lighting Setup
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
-scene.add(ambientLight);
-
-// // Key directional light (casts shadows directly overhead)
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.15);
-dirLight.position.set(0.5, 10, 0.5); // Overhead placement to cast shadows directly under wheels
-dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(1024, 1024);
-dirLight.shadow.camera.near = 0.1;
-dirLight.shadow.camera.far  = 500;
-dirLight.shadow.radius = 4.0; // Standard soft shadow blur radius for PCF
-dirLight.shadow.bias = -0.0005; // Prevent shadow acne
-dirLight.shadow.normalBias = 0.02; // Surface normal-based offset
-scene.add(dirLight);
-scene.add(dirLight.target);
-
-// // Fill directional light (opposite side, no shadows)
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.15);
-fillLight.position.set(-2, 3, -2);
-scene.add(fillLight);
-
-// Keep scene reference for camera add (needed by OrbitControls)
-scene.add(camera);
-
-// == Environment Map =========================================================
-// For standard models: no env map - materials show true PBR colors (matches Three.js editor)
-// For customization models: load model-specific HDR env map
-let hdrEnvMap = null;
-let currentHdrUrl = '';
-scene.environment = null;
-
-const defaultHdrPath = 'assets/models/customisation-models/icu-cot/hdri_file.hdr';
-
-function updateEnvironment() {
-  const urlLower = currentModelUrl.toLowerCase().replace(/\\/g, '/');
-  const isCustom = urlLower.includes('assets/models/customisation-models/');
-  
-  let hdrPath = defaultHdrPath;
-  if (isCustom) {
-    const lastSlashIdx = urlLower.lastIndexOf('/');
-    const folderPath = urlLower.substring(0, lastSlashIdx);
-    hdrPath = `${folderPath}/hdri_file.hdr`;
-  }
-  
-  // Set nice balanced light intensities that work well with the HDR environment
-  ambientLight.intensity = 0.4;
-  dirLight.intensity = 0.8;
-  fillLight.intensity = 0.4;
-
-  if (currentHdrUrl === hdrPath && hdrEnvMap) {
-    scene.environment = hdrEnvMap;
-  } else {
-    const rgbeLoader = new RGBELoader();
-    rgbeLoader.setDataType(THREE.UnsignedByteType);
-    
-    const loadHdr = (pathToLoad, isFallback) => {
-      rgbeLoader.load(pathToLoad, (texture) => {
-        const pmremGenerator = new THREE.PMREMGenerator(renderer);
-        pmremGenerator.compileEquirectangularShader();
-        hdrEnvMap = pmremGenerator.fromEquirectangular(texture).texture;
-        currentHdrUrl = pathToLoad;
-        pmremGenerator.dispose();
-        texture.dispose();
-        
-        scene.environment = hdrEnvMap;
-        
-        // Force recompilation of materials to apply the new environment map on v0.128.0 CPU
-        scene.traverse((child) => {
-          if (child.isMesh && child.material) {
-            const materials = Array.isArray(child.material) ? child.material : [child.material];
-            materials.forEach(mat => {
-              if (mat.isMeshStandardMaterial) {
-                mat.needsUpdate = true;
-              }
-            });
-          }
-        });
-      }, undefined, (err) => {
-        console.warn(`Failed to load HDR map: ${pathToLoad}. Error:`, err);
-        if (!isFallback && pathToLoad !== defaultHdrPath) {
-          console.log('Falling back to default ICU HDR environment...');
-          loadHdr(defaultHdrPath, true);
-        }
-      });
-    };
-    
-    loadHdr(hdrPath, false);
-  }
-}
-
-// == Solid Floor ==============================================================
-const floorGeo = new THREE.PlaneGeometry(1000, 1000);
-const floorMat = new THREE.ShadowMaterial({
-  opacity: 0.28   // Soft contact shadows look
-});
-const floorPlane = new THREE.Mesh(floorGeo, floorMat);
-floorPlane.rotation.x = -Math.PI / 2;
-floorPlane.receiveShadow = true;
-scene.add(floorPlane);
-
-// == Axes =====================================================================
-const axesHelper = new THREE.AxesHelper(1);
-// scene.add(axesHelper);
+// == DOM refs =================================================================
+const modelViewer = document.getElementById('three-canvas');
+const wrap        = document.getElementById('canvas-wrap');
+const loadingEl   = document.getElementById('loading');
+const loadingName = document.getElementById('loading-name');
+const initialHint = document.getElementById('initial-hint');
+const emptyState  = document.getElementById('empty-state');
+const meshListEl  = document.getElementById('mesh-list');
+const fileLabel   = document.getElementById('file-label');
+const infoBadge   = document.getElementById('info-badge');
 
 // == State ====================================================================
 let userColorsChanged = {
@@ -220,71 +20,21 @@ let userColorsChanged = {
   cabinet: false,
   drawer: false
 };
-let currentModel    = null;
 let currentModelName = '';
 let currentModelUrl  = '';
 let isCurrentModelViewOnly = false;
-let meshMap         = {};        // key → { mesh, visible, name, triCount }
-let defaultCamPos   = null;
-let defaultCamTarget = null;
-let wireframeMode   = false;
-let bgIndex         = 0;
-const bgColors      = [0xb8b8b8, 0xFFFFFF, 0xF8FAFC, 0xE2E8F0, 0xF1F5F9];
+let meshMap         = {};        // key → { meshes, visible, name, triCount }
 let selectedMesh    = null;      // key or null
-let loadGeneration  = 0;
+let productName     = 'Semi Fowler Cot';
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-
-// == Resize ===================================================================
-function resize() {
-  const w = wrap.clientWidth;
-  const h = wrap.clientHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-}
-resize();
-window.addEventListener('resize', resize);
-
-// == Render loop ==============================================================
-(function animate() {
-  requestAnimationFrame(animate);
-  controls.update();
-  renderer.render(scene, camera);
-})();
-
-// == DOM refs =================================================================
-const loadingEl   = document.getElementById('loading');
-const loadingName = document.getElementById('loading-name');
-const initialHint = document.getElementById('initial-hint');
-const emptyState  = document.getElementById('empty-state');
-const meshListEl  = document.getElementById('mesh-list');
-const fileLabel   = document.getElementById('file-label');
-const infoBadge   = document.getElementById('info-badge');
-const fbxLoader  = new FBXLoader();
-const gltfLoader = new GLTFLoader();
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath('https://unpkg.com/three@0.128.0/examples/js/libs/draco/');
-gltfLoader.setDRACOLoader(dracoLoader);
-
-const ktx2Loader = new KTX2Loader();
-ktx2Loader.setTranscoderPath('https://unpkg.com/three@0.128.0/examples/js/libs/basis/');
-ktx2Loader.detectSupport(renderer);
-gltfLoader.setKTX2Loader(ktx2Loader);
-
-gltfLoader.setMeshoptDecoder(MeshoptDecoder);
-
-// Suppress warning for EXT_mesh_gpu_instancing which is not natively supported in v128
-gltfLoader.register(parser => ({
-  name: 'EXT_mesh_gpu_instancing'
-}));
-
-const objLoader  = new OBJLoader();
+const bgColors = ['#bababa', '#FFFFFF', '#F8FAFC', '#E2E8F0', '#F1F5F9'];
+let bgIndex = 0;
+let wireframeMode = false;
 
 // == Load Model ===============================================================
 function loadModel(fileOrUrl, fileName) {
-  const myGen = ++loadGeneration;
   const isUrl = typeof fileOrUrl === 'string';
   const url = isUrl ? fileOrUrl : URL.createObjectURL(fileOrUrl);
   const name = isUrl ? (fileName || fileOrUrl.split('/').pop()) : fileOrUrl.name;
@@ -308,9 +58,13 @@ function loadModel(fileOrUrl, fileName) {
   } else if (lowerName.includes('semi_fowler') || lowerName.includes('semi-fowler')) {
     productName = 'Semi Fowler Cot';
   } else if (lowerName.includes('hi-lo') || lowerName.includes('hi_lo') || lowerName.includes('hilo')) {
-    productName = 'Hi-Lo Structure';
+    productName = 'Hi-Lo Strecher';
   } else if (lowerName.includes('couch') || lowerName.includes('examination')) {
     productName = 'Deluxe Examination Couch';
+  } else if (lowerName.includes('fowler')) {
+    productName = 'Fowler Cot';
+  } else if (lowerName.includes('labor')) {
+    productName = 'Labor Cot';
   }
 
   const titleEl = document.getElementById('product-title');
@@ -340,18 +94,11 @@ function loadModel(fileOrUrl, fileName) {
     } else {
       appEl.classList.remove('view-only');
     }
-    // Recalculate canvas aspect ratio and size immediately
-    setTimeout(resize, 0);
   }
 
   isCurrentModelViewOnly = isViewOnly;
-
-  if (currentModel) {
-    scene.remove(currentModel);
-    currentModel = null;
-  }
-  meshMap       = {};
-  selectedMesh  = null;
+  meshMap = {};
+  selectedMesh = null;
   userColorsChanged = {
     frame: false,
     mattress: false,
@@ -361,328 +108,197 @@ function loadModel(fileOrUrl, fileName) {
     drawer: false
   };
 
-  const ext = name.split('.').pop().toLowerCase();
-  let activeLoader = null;
+  // Assign source to Google's model-viewer
+  modelViewer.src = url;
+}
 
-  if (ext === 'fbx') {
-    activeLoader = fbxLoader;
-  } else if (ext === 'glb' || ext === 'gltf') {
-    activeLoader = gltfLoader;
-  } else if (ext === 'obj') {
-    activeLoader = objLoader;
-  } else {
-    if (!isUrl) URL.revokeObjectURL(url);
+// == Listen to model-viewer load event =========================================
+modelViewer.addEventListener('load', () => {
+  // Find internal Three.js scene symbol
+  const symbols = Object.getOwnPropertySymbols(modelViewer);
+  const sceneSymbol = symbols.find((s) => s.description === 'scene');
+  const internalScene = modelViewer[sceneSymbol];
+  
+  if (!internalScene) {
+    console.error('Failed to access internal Three.js scene');
     loadingEl.classList.remove('visible');
-    showToast('Unsupported format');
     return;
   }
 
-  activeLoader.load(url, (loadedObj) => {
-    if (!isUrl) URL.revokeObjectURL(url);
+  let totalTris = 0;
 
-    if (myGen !== loadGeneration) return;
+  // Traverse the internal scene graph to collect meshes
+  internalScene.traverse((child) => {
+    if (!child.isMesh) return;
 
-    loadingEl.classList.remove('visible');
-
-    let modelGroup = loadedObj;
-    if (ext === 'glb' || ext === 'gltf') {
-      modelGroup = loadedObj.scene;
+    // Filter out internal model-viewer helper elements (e.g. shadow ground planes, UI helper nodes)
+    const childName = (child.name || '').toLowerCase();
+    if (childName.includes('helper') || childName.includes('skybox') || childName.includes('ground') || childName.includes('shadow') || childName.includes('floor') || childName.includes('reticle')) {
+      return;
     }
 
-    currentModel = modelGroup;
-
-    // Clean geometry: Collapse outlier triangles (stray geometry > 10m away from origin in world space) directly in the buffer
-    modelGroup.updateMatrixWorld(true);
-    const tempVertex = new THREE.Vector3();
-    modelGroup.traverse(child => {
-      if (child.isMesh && child.geometry && child.geometry.attributes.position) {
-        const posAttr = child.geometry.attributes.position;
-        const matrix = child.matrixWorld;
-        let modified = false;
-
-        const isOutlierVertex = (idx) => {
-          tempVertex.set(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx));
-          tempVertex.applyMatrix4(matrix);
-          return (Math.abs(tempVertex.x) >= 10 || Math.abs(tempVertex.z) >= 10);
-        };
-
-        const collapseVertex = (idx) => {
-          posAttr.setXYZ(idx, 0, 0, 0);
-        };
-
-        if (child.geometry.index) {
-          const indexAttr = child.geometry.index;
-          const indices = indexAttr.array;
-          for (let i = 0; i < indices.length; i += 3) {
-            const idx0 = indices[i];
-            const idx1 = indices[i+1];
-            const idx2 = indices[i+2];
-            if (isOutlierVertex(idx0) || isOutlierVertex(idx1) || isOutlierVertex(idx2)) {
-              collapseVertex(idx0);
-              collapseVertex(idx1);
-              collapseVertex(idx2);
-              modified = true;
-            }
-          }
-        } else {
-          for (let i = 0; i < posAttr.count; i += 3) {
-            const idx0 = i;
-            const idx1 = i + 1;
-            const idx2 = i + 2;
-            if (isOutlierVertex(idx0) || isOutlierVertex(idx1) || isOutlierVertex(idx2)) {
-              collapseVertex(idx0);
-              collapseVertex(idx1);
-              collapseVertex(idx2);
-              modified = true;
-            }
-          }
+    // Standardize material configurations
+    if (child.material) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach(mat => {
+        if (mat.isMeshStandardMaterial) {
+          mat.envMapIntensity = 1.5;
+          mat.needsUpdate = true;
         }
-
-        if (modified) {
-          posAttr.needsUpdate = true;
-          child.geometry.computeBoundingBox();
-          child.geometry.computeBoundingSphere();
-        }
-      }
-    });
-
-    // Keep original scale/measurements (do not override scale in GLB)
-    // modelGroup.scale.setScalar(scale);
-
-    // Get bounding box of the cleaned model
-    const box = new THREE.Box3().setFromObject(modelGroup);
-
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const maxSz = Math.max(size.x, size.y, size.z);
-
-     // Collect meshes + shadows + standard material reflections
-     let totalTris = 0;
-     modelGroup.traverse((child) => {
-       if (!child.isMesh) return;
-
-       child.castShadow    = true;
-       child.receiveShadow = true;
-       if (child.material) {
-         const materials = Array.isArray(child.material) ? child.material : [child.material];
-         materials.forEach(mat => {
-           if (mat.isMeshStandardMaterial) {
-             mat.envMapIntensity = 1.5; // Highly realistic reflections
-             mat.needsUpdate = true;
-           }
-         });
-       }
-
-      let triCount = 0;
-      if (child.geometry) {
-        const geo = child.geometry;
-        if (!geo.attributes.normal) geo.computeVertexNormals();
-        triCount = geo.index
-          ? geo.index.count / 3
-          : (geo.attributes.position?.count ?? 0) / 3;
-        totalTris += triCount;
-      }
-
-      const parentName = (child.parent && child.parent.name && child.parent.name !== 'Scene' && child.parent.name !== 'RootNode') ? child.parent.name : '';
-      const nodeName = child.name || parentName || '';
-      const isGeneric = !nodeName || 
-                        nodeName.toLowerCase() === 'mesh' || 
-                        nodeName.toLowerCase().includes('3d_model') || 
-                        nodeName.toLowerCase() === 'scene' || 
-                        nodeName.toLowerCase() === 'rootnode';
-                        
-      if (!isGeneric && nodeName) {
-        const key = nodeName.trim();
-        if (meshMap[key]) {
-          meshMap[key].meshes.push(child);
-          meshMap[key].triCount += triCount;
-        } else {
-          meshMap[key] = { meshes: [child], visible: true, name: key, triCount };
-        }
-      } else if (child.material) {
-        const materials = Array.isArray(child.material) ? child.material : [child.material];
-        materials.forEach(mat => {
-          const matName = mat.name ? mat.name.trim() : '';
-          const key = matName || `Mesh`;
-          if (meshMap[key]) {
-            if (!meshMap[key].meshes.includes(child)) {
-              meshMap[key].meshes.push(child);
-            }
-            meshMap[key].triCount += triCount / materials.length;
-          } else {
-            meshMap[key] = { meshes: [child], visible: true, name: key, triCount: triCount / materials.length };
-          }
-        });
-      } else {
-        const key = `Mesh`;
-        if (meshMap[key]) {
-          meshMap[key].meshes.push(child);
-          meshMap[key].triCount += triCount;
-        } else {
-          meshMap[key] = { meshes: [child], visible: true, name: key, triCount };
-        }
-      }
-    });
-
-    // Center model horizontally (X and Z) but place bottom on floor y = 0
-    modelGroup.position.set(-center.x, -box.min.y, -center.z);
-
-    scene.add(modelGroup);
-
-    // Adjust shadow camera bounds to fit model size perfectly (minimum 10m to avoid sharp clipping lines near small models)
-    const halfWidth = Math.max(Math.max(size.x, size.z) * 1.5, 10.0);
-    dirLight.shadow.camera.left = -halfWidth;
-    dirLight.shadow.camera.right = halfWidth;
-    dirLight.shadow.camera.top = halfWidth;
-    dirLight.shadow.camera.bottom = -halfWidth;
-    dirLight.shadow.camera.near = 0.1;
-    dirLight.shadow.camera.far = maxSz * 4;
-    
-    // Position directional light to cast nice angled soft shadows
-    dirLight.position.set(halfWidth * 0.5, maxSz * 2.0, halfWidth * 0.8);
-    dirLight.shadow.camera.updateProjectionMatrix();
-
-    // Position camera dynamically based on model size
-    const fov = camera.fov * (Math.PI / 180);
-    let dist = (maxSz / 2) / Math.tan(fov / 2) * 1.35;
-    if (!dist || isNaN(dist) || dist < 0.1) dist = 2.5;
-
-    camera.position.set(0, maxSz * 0.8, dist);
-    controls.target.set(0, maxSz * 0.4, 0); // Target center of the object
-    controls.maxDistance = dist * 3;
-    controls.update();
-
-    console.log(`[Configurator] Loaded: ${name} | Size: ${maxSz.toFixed(2)} | Cam distance: ${dist.toFixed(2)}`);
-
-    defaultCamPos    = camera.position.clone();
-    defaultCamTarget = controls.target.clone();
-
-    axesHelper.scale.setScalar(maxSz * 0.15);
-
-    buildMeshList();
-    updateStats();
-
-    fileLabel.innerHTML = `Loaded: <span>${name}</span>`;
-    infoBadge.classList.add('visible');
-    document.getElementById('badge-name').textContent  = name;
-    document.getElementById('badge-stats').textContent =
-      `${Object.keys(meshMap).length} meshes . ${Math.round(totalTris).toLocaleString()} tris`;
-
-    showToast(`Loaded: "${name}" | Size: ${maxSz.toFixed(2)}m`);
-
-    // Hide/show sections dynamically based on model type
-    const isIcu = productName === 'ICU Cot';
-    const isFowler = productName === 'Fowler Cot';
-    const isCouch = productName === 'Deluxe Examination Couch';
-    const isHiLo = productName === 'Hi-Lo Strecher';
-    const isLabor = productName === 'Labor Cot';
-    
-    updateEnvironment();
-    
-    const sectionHeadFoot = document.getElementById('config-section-headfoot');
-    const sectionSideRails = document.getElementById('config-section-siderails');
-    const sectionMattress = document.getElementById('config-section-mattress');
-    const sectionWheel = document.getElementById('config-section-wheel');
-    const sectionOperation = document.getElementById('config-section-operation');
-    const couchCabinetSection = document.getElementById('couch-cabinet-color-section');
-    const couchDrawerSection = document.getElementById('couch-drawer-color-section');
-
-    // Default: Reset all display properties
-    if (sectionHeadFoot) sectionHeadFoot.style.display = 'none';
-    if (sectionSideRails) sectionSideRails.style.display = 'none';
-    if (sectionMattress) sectionMattress.style.display = 'none';
-    if (sectionWheel) sectionWheel.style.display = 'none';
-    if (sectionOperation) sectionOperation.style.display = 'none';
-    if (couchCabinetSection) couchCabinetSection.style.display = 'none';
-    if (couchDrawerSection) couchDrawerSection.style.display = 'none';
-
-    // Enable mattress type selector
-    const mattressRadioGroup = sectionMattress?.querySelector('.radio-group');
-    const mattressTitle = sectionMattress?.querySelector('.config-section-title');
-    if (mattressRadioGroup) mattressRadioGroup.style.display = 'flex';
-    if (mattressTitle) mattressTitle.style.display = 'block';
-
-    const toggleCardVisibility = (section, allowedValues) => {
-      document.querySelectorAll(`.config-card[data-section="${section}"]`).forEach(card => {
-        const isAllowed = allowedValues.includes(card.dataset.value);
-        card.style.display = isAllowed ? 'flex' : 'none';
       });
-    };
-
-    if (isIcu) {
-      if (sectionHeadFoot) sectionHeadFoot.style.display = 'flex';
-      if (sectionSideRails) sectionSideRails.style.display = 'flex';
-      if (sectionMattress) sectionMattress.style.display = 'flex';
-      if (sectionOperation) sectionOperation.style.display = 'flex';
-      toggleCardVisibility('siderails', ['ms', 'ssplain', 'abs', 'aluminium', 'sscollapsible']);
-      toggleCardVisibility('headfoot', ['ms', 'ss', 'abs1', 'abs2']);
-    } else if (isFowler) {
-      if (sectionHeadFoot) sectionHeadFoot.style.display = 'flex';
-      if (sectionSideRails) sectionSideRails.style.display = 'flex';
-      if (sectionMattress) sectionMattress.style.display = 'flex';
-      if (sectionWheel) sectionWheel.style.display = 'flex';
-      if (sectionOperation) sectionOperation.style.display = 'flex';
-      toggleCardVisibility('siderails', ['ssplain', 'abs', 'aluminium']);
-      toggleCardVisibility('headfoot', ['ms', 'ss', 'abs1', 'abs2']);
-    } else if (isCouch) {
-      if (sectionMattress) {
-        sectionMattress.style.display = 'flex';
-        if (mattressRadioGroup) mattressRadioGroup.style.display = 'none';
-        if (mattressTitle) mattressTitle.style.display = 'none';
-      }
-      if (couchCabinetSection) couchCabinetSection.style.display = 'flex';
-      if (couchDrawerSection) couchDrawerSection.style.display = 'flex';
-    } else if (isHiLo) {
-      if (sectionSideRails) sectionSideRails.style.display = 'flex';
-      if (sectionMattress) {
-        sectionMattress.style.display = 'flex';
-        if (mattressRadioGroup) mattressRadioGroup.style.display = 'none';
-        if (mattressTitle) mattressTitle.style.display = 'none';
-      }
-      toggleCardVisibility('siderails', ['ssplain', 'abs', 'aluminium']);
-    } else if (isLabor) {
-      if (sectionHeadFoot) {
-        sectionHeadFoot.style.display = 'flex';
-        toggleCardVisibility('headfoot', ['ss', 'abs1']);
-      }
-      if (sectionSideRails) sectionSideRails.style.display = 'flex';
-      if (sectionMattress) {
-        sectionMattress.style.display = 'flex';
-        if (mattressRadioGroup) mattressRadioGroup.style.display = 'none';
-        if (mattressTitle) mattressTitle.style.display = 'none';
-      }
-      if (sectionWheel) sectionWheel.style.display = 'flex';
-      toggleCardVisibility('siderails', ['ssplain', 'abs', 'aluminium']);
     }
 
-    // Automatically update heading serial letters (A, B, C, D, etc.) dynamically based on visibility
-    updateSectionHeadings();
-
-    // Set default configuration for the loaded model
-    setDefaultConfigForModel(name);
-
-    // Apply configuration immediately
-    applyCurrentConfig();
-
-    // Ensure the canvas resizing completes after layout reflow
-    resize();
-
-  }, undefined, (err) => {
-    if (!isUrl) URL.revokeObjectURL(url);
-    if (myGen !== loadGeneration) return;
-    loadingEl.classList.remove('visible');
-    console.error('Model load error:', err);
-    let errorMsg = 'Failed to load model';
-    if (err && err.message) {
-      errorMsg += ': ' + err.message;
-    } else if (err && err.target && err.target.status) {
-      errorMsg += ' (HTTP ' + err.target.status + ')';
-    } else if (err && err.type) {
-      errorMsg += ' (' + err.type + ')';
+    let triCount = 0;
+    if (child.geometry) {
+      const geo = child.geometry;
+      triCount = geo.index
+        ? geo.index.count / 3
+        : (geo.attributes.position?.count ?? 0) / 3;
+      totalTris += triCount;
     }
-    showToast(errorMsg);
+
+    const parentName = (child.parent && child.parent.name && child.parent.name !== 'Scene' && child.parent.name !== 'RootNode') ? child.parent.name : '';
+    const nodeName = child.name || parentName || '';
+    const isGeneric = !nodeName || 
+                      nodeName.toLowerCase() === 'mesh' || 
+                      nodeName.toLowerCase().includes('3d_model') || 
+                      nodeName.toLowerCase() === 'scene' || 
+                      nodeName.toLowerCase() === 'rootnode';
+
+    if (!isGeneric && nodeName) {
+      const key = nodeName.trim();
+      if (meshMap[key]) {
+        meshMap[key].meshes.push(child);
+        meshMap[key].triCount += triCount;
+      } else {
+        meshMap[key] = { meshes: [child], visible: true, name: key, triCount };
+      }
+    } else if (child.material) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach(mat => {
+        const matName = mat.name ? mat.name.trim() : '';
+        const key = matName || `Mesh`;
+        if (meshMap[key]) {
+          if (!meshMap[key].meshes.includes(child)) {
+            meshMap[key].meshes.push(child);
+          }
+          meshMap[key].triCount += triCount / materials.length;
+        } else {
+          meshMap[key] = { meshes: [child], visible: true, name: key, triCount: triCount / materials.length };
+        }
+      });
+    } else {
+      const key = `Mesh`;
+      if (meshMap[key]) {
+        meshMap[key].meshes.push(child);
+        meshMap[key].triCount += triCount;
+      } else {
+        meshMap[key] = { meshes: [child], visible: true, name: key, triCount };
+      }
+    }
   });
-}
+
+  buildMeshList();
+  updateStats();
+
+  const name = currentModelName || modelViewer.src.split('/').pop();
+  fileLabel.innerHTML = `Loaded: <span>${name}</span>`;
+  infoBadge.classList.add('visible');
+  document.getElementById('badge-name').textContent = name;
+  document.getElementById('badge-stats').textContent =
+    `${Object.keys(meshMap).length} meshes . ${Math.round(totalTris).toLocaleString()} tris`;
+
+  showToast(`Loaded: "${name}"`);
+  loadingEl.classList.remove('visible');
+
+  // Hide/show sections dynamically based on model type
+  const isIcu = productName === 'ICU Cot';
+  const isFowler = productName === 'Fowler Cot';
+  const isCouch = productName === 'Deluxe Examination Couch';
+  const isHiLo = productName === 'Hi-Lo Strecher';
+  const isLabor = productName === 'Labor Cot';
+
+  const sectionHeadFoot = document.getElementById('config-section-headfoot');
+  const sectionSideRails = document.getElementById('config-section-siderails');
+  const sectionMattress = document.getElementById('config-section-mattress');
+  const sectionWheel = document.getElementById('config-section-wheel');
+  const sectionOperation = document.getElementById('config-section-operation');
+  const couchCabinetSection = document.getElementById('couch-cabinet-color-section');
+  const couchDrawerSection = document.getElementById('couch-drawer-color-section');
+
+  if (sectionHeadFoot) sectionHeadFoot.style.display = 'none';
+  if (sectionSideRails) sectionSideRails.style.display = 'none';
+  if (sectionMattress) sectionMattress.style.display = 'none';
+  if (sectionWheel) sectionWheel.style.display = 'none';
+  if (sectionOperation) sectionOperation.style.display = 'none';
+  if (couchCabinetSection) couchCabinetSection.style.display = 'none';
+  if (couchDrawerSection) couchDrawerSection.style.display = 'none';
+
+  const toggleCardVisibility = (section, allowedValues) => {
+    document.querySelectorAll(`.config-card[data-section="${section}"]`).forEach(card => {
+      const isAllowed = allowedValues.includes(card.dataset.value);
+      card.style.display = isAllowed ? 'flex' : 'none';
+    });
+  };
+
+  if (isIcu) {
+    if (sectionHeadFoot) sectionHeadFoot.style.display = 'flex';
+    if (sectionSideRails) sectionSideRails.style.display = 'flex';
+    if (sectionMattress) sectionMattress.style.display = 'flex';
+    if (sectionOperation) sectionOperation.style.display = 'flex';
+    toggleCardVisibility('siderails', ['ms', 'ssplain', 'abs', 'aluminium', 'sscollapsible']);
+    toggleCardVisibility('headfoot', ['ms', 'ss', 'abs1', 'abs2']);
+  } else if (isFowler) {
+    if (sectionHeadFoot) sectionHeadFoot.style.display = 'flex';
+    if (sectionSideRails) sectionSideRails.style.display = 'flex';
+    if (sectionMattress) sectionMattress.style.display = 'flex';
+    if (sectionWheel) sectionWheel.style.display = 'flex';
+    if (sectionOperation) sectionOperation.style.display = 'flex';
+    toggleCardVisibility('siderails', ['ssplain', 'abs', 'aluminium']);
+    toggleCardVisibility('headfoot', ['ms', 'ss', 'abs1', 'abs2']);
+  } else if (isCouch) {
+    if (sectionMattress) {
+      sectionMattress.style.display = 'flex';
+      const mattressRadioGroup = sectionMattress.querySelector('.radio-group');
+      const mattressTitle = sectionMattress.querySelector('.config-section-title');
+      if (mattressRadioGroup) mattressRadioGroup.style.display = 'none';
+      if (mattressTitle) mattressTitle.style.display = 'none';
+    }
+    if (couchCabinetSection) couchCabinetSection.style.display = 'flex';
+    if (couchDrawerSection) couchDrawerSection.style.display = 'flex';
+  } else if (isHiLo) {
+    if (sectionSideRails) sectionSideRails.style.display = 'flex';
+    if (sectionMattress) {
+      sectionMattress.style.display = 'flex';
+      const mattressRadioGroup = sectionMattress.querySelector('.radio-group');
+      const mattressTitle = sectionMattress.querySelector('.config-section-title');
+      if (mattressRadioGroup) mattressRadioGroup.style.display = 'none';
+      if (mattressTitle) mattressTitle.style.display = 'none';
+    }
+    toggleCardVisibility('siderails', ['ssplain', 'abs', 'aluminium']);
+  } else if (isLabor) {
+    if (sectionHeadFoot) {
+      sectionHeadFoot.style.display = 'flex';
+      toggleCardVisibility('headfoot', ['ss', 'abs1']);
+    }
+    if (sectionSideRails) sectionSideRails.style.display = 'flex';
+    if (sectionMattress) {
+      sectionMattress.style.display = 'flex';
+      const mattressRadioGroup = sectionMattress.querySelector('.radio-group');
+      const mattressTitle = sectionMattress.querySelector('.config-section-title');
+      if (mattressRadioGroup) mattressRadioGroup.style.display = 'none';
+      if (mattressTitle) mattressTitle.style.display = 'none';
+    }
+    if (sectionWheel) sectionWheel.style.display = 'flex';
+    toggleCardVisibility('siderails', ['ssplain', 'abs', 'aluminium']);
+  }
+
+  updateSectionHeadings();
+  setDefaultConfigForModel(name);
+  applyCurrentConfig();
+});
+
+
 
 function updateSectionHeadings() {
   const sections = [
@@ -707,7 +323,7 @@ function updateSectionHeadings() {
   });
 }
 
-// Mesh name to WebP mapper helper
+// == Mesh name to WebP mapper helper ============================================
 function getMeshIconSrc(name) {
   const lower = name.toLowerCase();
   if (lower.includes('abs')) return 'assets/images/abs-icon.webp';
@@ -817,6 +433,17 @@ function buildMeshList(filter = '') {
   });
 }
 
+// == Request immediate rendering update ========================================
+function requestRender() {
+  if (!modelViewer) return;
+  const symbols = Object.getOwnPropertySymbols(modelViewer);
+  const sceneSymbol = symbols.find((s) => s.description === 'scene');
+  const internalScene = modelViewer[sceneSymbol];
+  if (internalScene && typeof internalScene.queueRender === 'function') {
+    internalScene.queueRender();
+  }
+}
+
 // == Toggle one mesh ===========================================================
 function toggleMesh(key, visible) {
   const entry      = meshMap[key];
@@ -837,15 +464,12 @@ function toggleMesh(key, visible) {
         if (m.visible) {
           anyMatVisible = true;
         }
-        // Apply wireframe mode
         m.wireframe = m.visible ? wireframeMode : false;
       });
 
-      // If the mesh is multi-material, keep the mesh node itself visible if ANY of its materials are visible
       if (Array.isArray(mesh.material)) {
         mesh.visible = anyMatVisible;
       } else {
-        // If it's a single material mesh, set the mesh visibility directly
         mesh.visible = visible;
       }
     } else {
@@ -861,6 +485,7 @@ function toggleMesh(key, visible) {
   }
 
   updateStats();
+  requestRender();
 }
 
 // == Focus camera on mesh =====================================================
@@ -868,7 +493,7 @@ function focusMesh(key, itemEl, forceSelect = false) {
   if (selectedMesh === key && !forceSelect) {
     selectedMesh = null;
     itemEl.classList.remove('active');
-    applyCurrentConfig(); // Restore normal configuration visibility on deselect
+    applyCurrentConfig();
     return;
   }
 
@@ -876,7 +501,7 @@ function focusMesh(key, itemEl, forceSelect = false) {
   selectedMesh = key;
   itemEl.classList.add('active');
 
-  // Auto-isolate: Hide all other meshes, show only the selected one
+  // Auto-isolate
   Object.keys(meshMap).forEach(k => {
     toggleMesh(k, k === key);
   });
@@ -891,21 +516,16 @@ function focusMesh(key, itemEl, forceSelect = false) {
 
   const centre = box.getCenter(new THREE.Vector3());
   const size   = box.getSize(new THREE.Vector3());
-  const maxSz  = Math.max(size.x, size.y, size.z);
-
-  if (!isFinite(maxSz) || maxSz === 0) return;
-
-  const fov  = camera.fov * (Math.PI / 180);
-  const dist = (maxSz / 2) / Math.tan(fov / 2) * 2.5;
-
-  const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
-  if (dir.lengthSq() === 0) {
-    dir.set(0.6, 0.4, 1).normalize();
+  
+  // Set camera target in model-viewer
+  modelViewer.cameraTarget = `${centre.x}m ${centre.y}m ${centre.z}m`;
+  
+  const maxSz = Math.max(size.x, size.y, size.z);
+  if (isFinite(maxSz) && maxSz > 0) {
+    // Dynamically adjust model-viewer orbit radius/zoom level
+    const zoomRadius = maxSz * 2.2;
+    modelViewer.cameraOrbit = `0deg 75deg ${zoomRadius}m`;
   }
-
-  controls.target.copy(centre);
-  camera.position.copy(centre).addScaledVector(dir, dist);
-  controls.update();
 }
 
 // == Stats ====================================================================
@@ -922,7 +542,6 @@ function updateStats() {
 function setDefaultConfigForModel(name) {
   const lower = (currentModelUrl || name || '').toLowerCase();
   
-  // Define defaults per model
   let defaults = {
     headfoot: 'ms',
     siderails: 'ms',
@@ -989,7 +608,6 @@ function setDefaultConfigForModel(name) {
     };
   }
 
-  // Update UI active states to match defaults
   document.querySelectorAll('.config-card[data-section="headfoot"]').forEach(card => {
     card.classList.toggle('active', card.dataset.value === defaults.headfoot);
   });
@@ -1009,10 +627,7 @@ function setDefaultConfigForModel(name) {
 
 // == Configuration Logic ======================================================
 function applyCurrentConfig() {
-  if (!currentModel) return;
-
   if (isCurrentModelViewOnly) {
-    // Show all meshes for view-only models and skip config filters
     Object.keys(meshMap).forEach(key => {
       toggleMesh(key, true);
     });
@@ -1027,21 +642,18 @@ function applyCurrentConfig() {
   const activeColor = document.querySelector('.color-swatch:not(.mattress-color):not(.abs-panel-color):not(.abs-rail-color):not(.couch-cabinet-color):not(.couch-drawer-color).active')?.dataset.color;
   const activeMattressColor = document.querySelector('.color-swatch.mattress-color.active')?.dataset.color;
 
-  // Show/hide ABS Panel color section based on ABS Panel selection
   const isAbsPanelSelected = (headfoot === 'abs' || headfoot === 'abs1' || headfoot === 'abs2');
   const absPanelColorSection = document.getElementById('abs-panel-color-section');
   if (absPanelColorSection) {
     absPanelColorSection.style.display = isAbsPanelSelected ? 'flex' : 'none';
   }
 
-  // Show/hide ABS Rail color section based on ABS Rail selection
   const isAbsRailSelected = (siderails === 'abs');
   const absRailColorSection = document.getElementById('abs-rail-color-section');
   if (absRailColorSection) {
     absRailColorSection.style.display = isAbsRailSelected ? 'flex' : 'none';
   }
 
-  // Show/hide Couch Cabinet and Drawer color sections dynamically
   const isCouch = currentModelName.toLowerCase().includes('couch') || currentModelName.toLowerCase().includes('examination') || productName === 'Deluxe Examination Couch';
   const couchCabinetSection = document.getElementById('couch-cabinet-color-section');
   const couchDrawerSection = document.getElementById('couch-drawer-color-section');
@@ -1069,7 +681,6 @@ function applyCurrentConfig() {
         if (name.includes('abs') && !isAbs2) visible = false;
       }
     }
-
 
     // Side Rails matching
     const isRailMesh = name.includes('rail') || name.includes('side') || name.includes('collapsible') || name.includes('colapsable') || name.includes('ac-') || name.includes('ac_') || name.includes('pipe');
@@ -1151,10 +762,10 @@ function applyCurrentConfig() {
       applyCouchDrawerColor(activeCouchDrawerColor);
     }
   }
+  requestRender();
 }
 
 function applyColorToMeshes(hexColorStr) {
-  if (!currentModel) return;
   const hex = parseInt(hexColorStr.replace('#', ''), 16);
 
   if (selectedMesh && meshMap[selectedMesh]) {
@@ -1162,16 +773,12 @@ function applyColorToMeshes(hexColorStr) {
     return;
   }
 
-  // General model coloring for frames/panels (excluding mattress and ABS components)
   Object.keys(meshMap).forEach(key => {
     const entry = meshMap[key];
     const name = entry.name.toLowerCase();
     
-    // Check if it's a side rail mesh (using same classification as visibility logic)
     const isRailMesh = name.includes('rail') || name.includes('side') || name.includes('collapsible') || name.includes('colapsable') || name.includes('ac-') || name.includes('ac_');
     const isAbsRail = isRailMesh && !name.includes('ms') && !name.includes('ss') && !name.includes('aluminium') && !name.includes('collapsible') && !name.includes('colapsable') && !name.includes('ac-') && !name.includes('ac_');
-    
-    // Check if it's an ABS component (either explicitly named 'abs' or classified as an ABS rail)
     const isAbs = name.includes('abs') || isAbsRail;
 
     if (entry.visible && !name.includes('mattress') && !isAbs && (name.includes('panel') || name.includes('rail') || name.includes('frame') || name.includes('board') || name.includes('head') || name.includes('foot') || name.includes('body') || name.includes('support'))) {
@@ -1181,10 +788,8 @@ function applyColorToMeshes(hexColorStr) {
 }
 
 function applyMattressColor(hexColorStr) {
-  if (!currentModel) return;
   const hex = parseInt(hexColorStr.replace('#', ''), 16);
 
-  // Mattress specific coloring
   Object.keys(meshMap).forEach(key => {
     const entry = meshMap[key];
     const name = entry.name.toLowerCase();
@@ -1194,15 +799,14 @@ function applyMattressColor(hexColorStr) {
   });
 }
 
+// ABS Panel color
 function applyAbsPanelColor(hexColorStr) {
-  if (!currentModel) return;
   const hex = parseInt(hexColorStr.replace('#', ''), 16);
 
   Object.keys(meshMap).forEach(key => {
     const entry = meshMap[key];
     const name = entry.name.toLowerCase();
     
-    // Target ABS head/foot panels only
     const isAbsPanel = (name.includes('abs') && (name.includes('head') || name.includes('foot') || name.includes('board') || name.includes('panel') || name.includes('end')));
     
     if (entry.visible && isAbsPanel) {
@@ -1233,15 +837,14 @@ function applyAbsPanelColor(hexColorStr) {
   });
 }
 
+// ABS Rail color
 function applyAbsRailColor(hexColorStr) {
-  if (!currentModel) return;
   const hex = parseInt(hexColorStr.replace('#', ''), 16);
 
   Object.keys(meshMap).forEach(key => {
     const entry = meshMap[key];
     const name = entry.name.toLowerCase();
     
-    // Target ABS side rails only
     const isAbsRail = (name.includes('abs') && (name.includes('rail') || name.includes('side')));
     
     if (entry.visible && isAbsRail) {
@@ -1273,7 +876,6 @@ function applyAbsRailColor(hexColorStr) {
 }
 
 function applyCouchCabinetColor(hexColorStr) {
-  if (!currentModel) return;
   const hex = parseInt(hexColorStr.replace('#', ''), 16);
 
   Object.keys(meshMap).forEach(key => {
@@ -1289,7 +891,6 @@ function applyCouchCabinetColor(hexColorStr) {
 }
 
 function applyCouchDrawerColor(hexColorStr) {
-  if (!currentModel) return;
   const hex = parseInt(hexColorStr.replace('#', ''), 16);
 
   Object.keys(meshMap).forEach(key => {
@@ -1308,7 +909,6 @@ function applyCouchDrawerColor(hexColorStr) {
 function setColorOnMesh(mesh, hex, targetMaterialName, forceColor = false) {
   if (!mesh.material) return;
   
-  // Helper to check if a material represents metal or a handle
   const isMetalOrHandleMaterial = (mat) => {
     if (!mat) return false;
     const matName = mat.name ? mat.name.toLowerCase() : '';
@@ -1325,7 +925,6 @@ function setColorOnMesh(mesh, hex, targetMaterialName, forceColor = false) {
     return false;
   };
 
-  // Safely clone a material while explicitly preserving all PBR properties
   const cloneMat = (mat) => {
     const cloned = mat.clone();
     cloned.roughness        = mat.roughness;
@@ -1334,8 +933,8 @@ function setColorOnMesh(mesh, hex, targetMaterialName, forceColor = false) {
     cloned.metalnessMap     = mat.metalnessMap;
     cloned.normalMap        = mat.normalMap;
     cloned.normalScale      = mat.normalScale ? mat.normalScale.clone() : cloned.normalScale;
-    cloned.map              = mat.map;          // base colour texture
-    cloned.aoMap            = mat.aoMap;        // ambient occlusion
+    cloned.map              = mat.map;
+    cloned.aoMap            = mat.aoMap;
     cloned.aoMapIntensity   = mat.aoMapIntensity;
     cloned.envMapIntensity  = mat.envMapIntensity;
     cloned.envMap           = mat.envMap;
@@ -1350,10 +949,10 @@ function setColorOnMesh(mesh, hex, targetMaterialName, forceColor = false) {
     mesh.material = mesh.material.map(mat => {
       const matName = (mat.name || '').trim();
       if (targetMaterialName && matName !== targetMaterialName) {
-        return mat; // Keep original material untouched if it doesn't match target
+        return mat;
       }
       if (!forceColor && isMetalOrHandleMaterial(mat)) {
-        return mat; // Keep original metal/handle material untouched
+        return mat;
       }
       const cloned = cloneMat(mat);
       if (cloned.color) cloned.color.setHex(hex);
@@ -1366,71 +965,12 @@ function setColorOnMesh(mesh, hex, targetMaterialName, forceColor = false) {
       return;
     }
     if (!forceColor && isMetalOrHandleMaterial(mesh.material)) {
-      return; // Keep original metal/handle material untouched
+      return;
     }
     mesh.material = cloneMat(mesh.material);
     if (mesh.material.color) mesh.material.color.setHex(hex);
     if (mesh.material.emissive) mesh.material.emissive.setHex(0x000000);
   }
-}
-
-function focusOnCategory(category) {
-  if (!currentModel) return;
-  const box = new THREE.Box3();
-  
-  Object.keys(meshMap).forEach(key => {
-    const entry = meshMap[key];
-    const name = entry.name.toLowerCase();
-    
-    let match = false;
-    if (category === 'headfoot') {
-      match = name.includes('head') || name.includes('foot') || name.includes('board') || name.includes('panel') || name.includes('end');
-      if (name.includes('rail') || name.includes('side') || name.includes('mattress') || name.includes('mattres')) {
-        match = false;
-      }
-    } else if (category === 'siderails') {
-      match = name.includes('rail') || name.includes('side') || name.includes('collapsible') || name.includes('colapsable') || name.includes('ac-') || name.includes('ac_');
-    } else if (category === 'mattress') {
-      match = name.includes('mattress') || name.includes('mattres') || name.includes('zipper') || name.includes('zip') || name.includes('cube.020') || name.includes('plain') || name.includes('lather');
-      if (name.includes('panel') || name.includes('board') || name.includes('head') || name.includes('foot') || name.includes('end')) {
-        match = false;
-      }
-    } else if (category === 'cabinet') {
-      match = name.includes('cabinet') || name.includes('cupboard') || name.includes('cabin') || name.includes('footer');
-    } else if (category === 'drawer') {
-      match = name.includes('drawer') || name.includes('cupboard');
-    } else if (category === 'wheel') {
-      match = name.includes('wheel') || name.includes('castor') || name.includes('caster');
-    } else if (category === 'operation') {
-      match = name.includes('motor') || name.includes('remote') || name.includes('crank') || name.includes('manual') || name.includes('handle');
-    }
-    
-    if (entry.visible && match) {
-      entry.meshes.forEach(mesh => {
-        box.expandByObject(mesh);
-      });
-    }
-  });
-
-  if (box.isEmpty()) return;
-
-  const centre = box.getCenter(new THREE.Vector3());
-  const size   = box.getSize(new THREE.Vector3());
-  const maxSz  = Math.max(size.x, size.y, size.z);
-
-  if (!isFinite(maxSz) || maxSz === 0) return;
-
-  const fov  = camera.fov * (Math.PI / 180);
-  const dist = (maxSz / 2) / Math.tan(fov / 2) * 2.2;
-
-  const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
-  if (dir.lengthSq() === 0) {
-    dir.set(0.6, 0.4, 1).normalize();
-  }
-
-  controls.target.copy(centre);
-  camera.position.copy(centre).addScaledVector(dir, dist);
-  controls.update();
 }
 
 // Setup configuration panel event listeners
@@ -1626,14 +1166,6 @@ if (absRailCustomPicker && absRailCustomSwatch) {
   absRailCustomPicker.addEventListener('change', handleAbsRailCustomColor);
 }
 
-// Auto Rotate toggle listener
-const autoRotateToggle = document.getElementById('auto-rotate-toggle-cb');
-if (autoRotateToggle) {
-  autoRotateToggle.addEventListener('change', (e) => {
-    controls.autoRotate = e.target.checked;
-  });
-}
-
 // Developer Mesh Inspector Drawer Toggle
 const inspectorSidebar = document.getElementById('sidebar');
 const inspectorToggleBtn = document.getElementById('inspector-toggle-btn');
@@ -1651,7 +1183,7 @@ closeInspectorBtn.addEventListener('click', () => {
     const itemEl = meshListEl.querySelector(`[data-key="${selectedMesh}"]`);
     if (itemEl) itemEl.classList.remove('active');
     selectedMesh = null;
-    applyCurrentConfig(); // Restore configuration visibility when closing inspector
+    applyCurrentConfig();
   }
 });
 
@@ -1680,35 +1212,41 @@ document.getElementById('mesh-search').addEventListener('input', (e) => {
 
 // == HUD ======================================================================
 document.getElementById('reset-cam-btn').addEventListener('click', () => {
-  if (!defaultCamPos) return;
-  camera.position.copy(defaultCamPos);
-  controls.target.copy(defaultCamTarget);
-  controls.update();
+  modelViewer.cameraOrbit = 'unset';
+  modelViewer.cameraTarget = 'unset';
   showToast('Camera reset');
 });
 
 document.getElementById('wireframe-btn').addEventListener('click', () => {
   wireframeMode = !wireframeMode;
   document.getElementById('wireframe-btn').classList.toggle('active', wireframeMode);
-  if (currentModel) {
-    currentModel.traverse(child => {
+  
+  const symbols = Object.getOwnPropertySymbols(modelViewer);
+  const sceneSymbol = symbols.find((s) => s.description === 'scene');
+  const internalScene = modelViewer[sceneSymbol];
+  
+  if (internalScene) {
+    internalScene.traverse(child => {
       if (child.isMesh && child.material) {
         const mats = Array.isArray(child.material) ? child.material : [child.material];
         mats.forEach(m => { m.wireframe = child.visible ? wireframeMode : false; });
       }
     });
   }
+  requestRender();
   showToast(wireframeMode ? 'Wireframe on' : 'Wireframe off');
 });
 
 document.getElementById('grid-btn').addEventListener('click', () => {
-  floorPlane.visible = !floorPlane.visible;
-  document.getElementById('grid-btn').classList.toggle('active', floorPlane.visible);
+  const intensity = modelViewer.getAttribute('shadow-intensity');
+  const newIntensity = intensity === '0' ? '1' : '0';
+  modelViewer.setAttribute('shadow-intensity', newIntensity);
+  document.getElementById('grid-btn').classList.toggle('active', newIntensity !== '0');
+  showToast(newIntensity === '0' ? 'Shadows hidden' : 'Shadows visible');
 });
 
 document.getElementById('bg-color-picker').addEventListener('input', (e) => {
-  const bgColor = new THREE.Color(e.target.value);
-  scene.background = bgColor;
+  modelViewer.style.backgroundColor = e.target.value;
 });
 
 // == Viewport click raycasting ===============================================
@@ -1716,13 +1254,13 @@ let pointerDownX = 0;
 let pointerDownY = 0;
 let pointerDownTime = 0;
 
-canvas.addEventListener('pointerdown', (e) => {
+modelViewer.addEventListener('pointerdown', (e) => {
   pointerDownX = e.clientX;
   pointerDownY = e.clientY;
   pointerDownTime = performance.now();
 });
 
-canvas.addEventListener('pointerup', (e) => {
+modelViewer.addEventListener('pointerup', (e) => {
   const diffX = Math.abs(e.clientX - pointerDownX);
   const diffY = Math.abs(e.clientY - pointerDownY);
   const diffTime = performance.now() - pointerDownTime;
@@ -1733,16 +1271,23 @@ canvas.addEventListener('pointerup', (e) => {
 });
 
 function onCanvasClick(event) {
-  if (!currentModel) return;
+  const symbols = Object.getOwnPropertySymbols(modelViewer);
+  const sceneSymbol = symbols.find((s) => s.description === 'scene');
+  const cameraSymbol = symbols.find((s) => s.description === 'camera');
+  
+  const internalScene = modelViewer[sceneSymbol];
+  const internalCamera = modelViewer[cameraSymbol];
+  
+  if (!internalScene || !internalCamera) return;
 
-  const rect = renderer.domElement.getBoundingClientRect();
+  const rect = modelViewer.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-  raycaster.setFromCamera(mouse, camera);
+  raycaster.setFromCamera(mouse, internalCamera);
 
   const meshes = [];
-  currentModel.traverse((child) => {
+  internalScene.traverse((child) => {
     if (child.isMesh && child.visible) {
       meshes.push(child);
     }
@@ -1764,7 +1309,6 @@ function onCanvasClick(event) {
     if (matchedKey) {
       blinkMesh(clickedMesh);
 
-      // Open the developer drawer if not open to show selected mesh
       if (!inspectorSidebar.classList.contains('open')) {
         inspectorSidebar.classList.add('open');
         inspectorToggleBtn.classList.add('active');
@@ -1777,7 +1321,6 @@ function onCanvasClick(event) {
       }
     }
   } else {
-    // Clicked empty space: deselect selection and restore normal config visibility
     if (selectedMesh) {
       const itemEl = meshListEl.querySelector(`[data-key="${selectedMesh}"]`);
       if (itemEl) itemEl.classList.remove('active');
@@ -1814,7 +1357,7 @@ function blinkMesh(mesh) {
 
 document.getElementById('bg-btn').addEventListener('click', () => {
   bgIndex = (bgIndex + 1) % bgColors.length;
-  scene.background = new THREE.Color(bgColors[bgIndex]);
+  modelViewer.style.backgroundColor = bgColors[bgIndex];
 });
 
 // == Export Model =============================================================
@@ -1839,47 +1382,34 @@ document.getElementById('export-gltf').addEventListener('click', () => {
 });
 
 function exportModel(options) {
-  if (!currentModel) {
-    showToast('No model loaded to export');
-    return;
-  }
-
   showToast('Exporting model...');
-  const exporter = new GLTFExporter();
   
-  const exportOptions = {
-    binary: options.binary,
-    onlyVisible: true
-  };
+  modelViewer.exportGLTF(options).then((result) => {
+    let output;
+    if (options.binary) {
+      output = new Blob([result], { type: 'application/octet-stream' });
+    } else {
+      output = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
+    }
 
-  try {
-    exporter.parse(currentModel, (result) => {
-      let output;
-      if (options.binary) {
-        output = new Blob([result], { type: 'application/octet-stream' });
-      } else {
-        output = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
-      }
+    let baseName = 'model-export';
+    const badgeName = document.getElementById('badge-name').textContent;
+    if (badgeName && badgeName !== '-') {
+      baseName = badgeName.replace(/\.[^/.]+$/, "");
+    }
+    const fileName = `${baseName}_exported.${options.ext}`;
 
-      let baseName = 'model-export';
-      const badgeName = document.getElementById('badge-name').textContent;
-      if (badgeName && badgeName !== '-') {
-        baseName = badgeName.replace(/\.[^/.]+$/, "");
-      }
-      const fileName = `${baseName}_exported.${options.ext}`;
-
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(output);
-      link.download = fileName;
-      link.click();
-      
-      setTimeout(() => URL.revokeObjectURL(link.href), 100);
-      showToast(`Exported as ${options.ext.toUpperCase()}`);
-    }, exportOptions);
-  } catch (error) {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(output);
+    link.download = fileName;
+    link.click();
+    
+    setTimeout(() => URL.revokeObjectURL(link.href), 100);
+    showToast(`Exported as ${options.ext.toUpperCase()}`);
+  }).catch((error) => {
     console.error('Export error:', error);
     showToast('Failed to export model');
-  }
+  });
 }
 
 // == File input ================================================================
@@ -1910,10 +1440,10 @@ document.addEventListener('drop', (e) => {
   const file = e.dataTransfer?.files?.[0];
   if (!file) return;
   const ext = file.name.toLowerCase().split('.').pop();
-  if (['fbx', 'glb', 'gltf', 'obj'].includes(ext)) {
+  if (['glb', 'gltf'].includes(ext)) {
     loadModel(file);
   } else {
-    showToast('Please drop a .fbx, .glb, .gltf, or .obj file');
+    showToast('Please drop a .glb or .gltf file');
   }
 });
 
@@ -1924,13 +1454,14 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+  }, 3000);
 }
 
 // Load default model from root URL on page load
 let defaultModel = 'assets/models/view-only-models/semi-fowler-cot.glb';
-let productName = 'Semi Fowler Cot';
 
-// Parse query params or hash parameters for the model
 try {
   const urlParams = new URLSearchParams(window.location.search);
   const hashVal = window.location.hash.toLowerCase().replace('#', '');
@@ -2005,7 +1536,6 @@ if (selectorEl) {
     selectorEl.value = 'bedside-locker';
   }
 
-  // Handle dropdown change event to reload the app with the new hash parameter
   selectorEl.addEventListener('change', (e) => {
     window.location.hash = e.target.value;
   });
@@ -2013,8 +1543,6 @@ if (selectorEl) {
 
 loadModel(defaultModel);
 
-// Listen to hash changes and reload model context dynamically
 window.addEventListener('hashchange', () => {
   window.location.reload();
 });
-
