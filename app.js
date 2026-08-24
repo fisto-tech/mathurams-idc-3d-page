@@ -1,4 +1,71 @@
 import * as THREE from 'three';
+
+// Polyfill to add CPU-side dequantization support for quantized attributes in Three.js v0.128.0
+(function() {
+  function denormalize(value, array) {
+    if (array instanceof Float32Array || array instanceof Float64Array) return value;
+    if (array instanceof Int8Array) return Math.max(value / 127, -1);
+    if (array instanceof Uint8Array) return value / 255;
+    if (array instanceof Int16Array) return Math.max(value / 32767, -1);
+    if (array instanceof Uint16Array) return value / 65535;
+    if (array instanceof Int32Array) return Math.max(value / 2147483647, -1);
+    if (array instanceof Uint32Array) return value / 4294967295;
+    return value;
+  }
+
+  const originalGetX = THREE.BufferAttribute.prototype.getX;
+  const originalGetY = THREE.BufferAttribute.prototype.getY;
+  const originalGetZ = THREE.BufferAttribute.prototype.getZ;
+  const originalGetW = THREE.BufferAttribute.prototype.getW;
+
+  THREE.BufferAttribute.prototype.getX = function(index) {
+    let val = originalGetX.call(this, index);
+    if (this.normalized) val = denormalize(val, this.array);
+    return val;
+  };
+  THREE.BufferAttribute.prototype.getY = function(index) {
+    let val = originalGetY.call(this, index);
+    if (this.normalized) val = denormalize(val, this.array);
+    return val;
+  };
+  THREE.BufferAttribute.prototype.getZ = function(index) {
+    let val = originalGetZ.call(this, index);
+    if (this.normalized) val = denormalize(val, this.array);
+    return val;
+  };
+  THREE.BufferAttribute.prototype.getW = function(index) {
+    let val = originalGetW.call(this, index);
+    if (this.normalized) val = denormalize(val, this.array);
+    return val;
+  };
+
+  const originalIGetX = THREE.InterleavedBufferAttribute.prototype.getX;
+  const originalIGetY = THREE.InterleavedBufferAttribute.prototype.getY;
+  const originalIGetZ = THREE.InterleavedBufferAttribute.prototype.getZ;
+  const originalIGetW = THREE.InterleavedBufferAttribute.prototype.getW;
+
+  THREE.InterleavedBufferAttribute.prototype.getX = function(index) {
+    let val = originalIGetX.call(this, index);
+    if (this.normalized) val = denormalize(val, this.data.array);
+    return val;
+  };
+  THREE.InterleavedBufferAttribute.prototype.getY = function(index) {
+    let val = originalIGetY.call(this, index);
+    if (this.normalized) val = denormalize(val, this.data.array);
+    return val;
+  };
+  THREE.InterleavedBufferAttribute.prototype.getZ = function(index) {
+    let val = originalIGetZ.call(this, index);
+    if (this.normalized) val = denormalize(val, this.data.array);
+    return val;
+  };
+  THREE.InterleavedBufferAttribute.prototype.getW = function(index) {
+    let val = originalIGetW.call(this, index);
+    if (this.normalized) val = denormalize(val, this.data.array);
+    return val;
+  };
+})();
+
 import { OrbitControls } from 'https://unpkg.com/three@0.128.0/examples/jsm/controls/OrbitControls.js';
 import { FBXLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/FBXLoader.js';
 import { GLTFLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/GLTFLoader.js';
@@ -6,6 +73,8 @@ import { DRACOLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loader
 import { OBJLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/OBJLoader.js';
 import { GLTFExporter } from 'https://unpkg.com/three@0.128.0/examples/jsm/exporters/GLTFExporter.js';
 import { RGBELoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/RGBELoader.js';
+import { KTX2Loader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'https://unpkg.com/three@0.128.0/examples/jsm/libs/meshopt_decoder.module.js';
 
 // == Scene ====================================================================
 const canvas  = document.getElementById('three-canvas');
@@ -14,12 +83,12 @@ const wrap    = document.getElementById('canvas-wrap');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type    = THREE.VSMShadowMap;
+renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
 renderer.outputEncoding    = THREE.sRGBEncoding;
 // Match Three.js Editor renderer settings
 renderer.physicallyCorrectLights = true;
-renderer.toneMapping       = THREE.NoToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMapping       = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xb8b8b8);
@@ -33,31 +102,30 @@ controls.dampingFactor = 0.07;
 controls.minDistance   = 0.1;
 controls.maxDistance   = 5000;
 controls.enablePan     = false; // Disable camera panning
-controls.autoRotate    = true;
+controls.autoRotate    = false;
 controls.autoRotateSpeed = 1.0;
 
 // == Lights ===================================================================
 // Replicates Three.js Editor Default Lighting Setup
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
 scene.add(ambientLight);
 
-// Key directional light (casts shadows directly overhead)
-const dirLight = new THREE.DirectionalLight(0xffffff, 2.2);
+// // Key directional light (casts shadows directly overhead)
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.15);
 dirLight.position.set(0.5, 10, 0.5); // Overhead placement to cast shadows directly under wheels
 dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(1024, 1024); // VSM performs exceptionally well at 1024
+dirLight.shadow.mapSize.set(1024, 1024);
 dirLight.shadow.camera.near = 0.1;
 dirLight.shadow.camera.far  = 500;
-dirLight.shadow.radius = 15.0; // High blur radius for VSM shadow maps
-dirLight.shadow.blurSamples = 16; // Extra shadow filtering steps
-// VSM specific bias configurations
-dirLight.shadow.bias = -0.003;
-dirLight.shadow.normalBias = 0.0;
+dirLight.shadow.radius = 4.0; // Standard soft shadow blur radius for PCF
+dirLight.shadow.bias = -0.0005; // Prevent shadow acne
+dirLight.shadow.normalBias = 0.02; // Surface normal-based offset
 scene.add(dirLight);
+scene.add(dirLight.target);
 
-// Fill directional light (opposite side, no shadows)
-const fillLight = new THREE.DirectionalLight(0xffffff, 1.0);
-fillLight.position.set(-5, 3, -5);
+// // Fill directional light (opposite side, no shadows)
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.15);
+fillLight.position.set(-2, 3, -2);
 scene.add(fillLight);
 
 // Keep scene reference for camera add (needed by OrbitControls)
@@ -65,43 +133,67 @@ scene.add(camera);
 
 // == Environment Map =========================================================
 // For standard models: no env map - materials show true PBR colors (matches Three.js editor)
-// For couch: load HDR studio env for better reflections on upholstered surfaces
+// For customization models: load model-specific HDR env map
 let hdrEnvMap = null;
+let currentHdrUrl = '';
 scene.environment = null;
 
-function updateEnvironment(isCouch) {
-  if (isCouch) {
-    // Dim direct lights when HDR env is driving illumination
-    ambientLight.intensity = 0.6;
-    dirLight.intensity = 0.8;
-    fillLight.intensity = 0.3;
+const defaultHdrPath = 'assets/models/customisation-models/icu-cot/hdri_file.hdr';
+
+function updateEnvironment() {
+  const urlLower = currentModelUrl.toLowerCase().replace(/\\/g, '/');
+  const isCustom = urlLower.includes('assets/models/customisation-models/');
+  
+  let hdrPath = defaultHdrPath;
+  if (isCustom) {
+    const lastSlashIdx = urlLower.lastIndexOf('/');
+    const folderPath = urlLower.substring(0, lastSlashIdx);
+    hdrPath = `${folderPath}/hdri_file.hdr`;
+  }
+  
+  // Set nice balanced light intensities that work well with the HDR environment
+  ambientLight.intensity = 0.4;
+  dirLight.intensity = 0.8;
+  fillLight.intensity = 0.4;
+
+  if (currentHdrUrl === hdrPath && hdrEnvMap) {
+    scene.environment = hdrEnvMap;
+  } else {
+    const rgbeLoader = new RGBELoader();
+    rgbeLoader.setDataType(THREE.UnsignedByteType);
     
-    if (hdrEnvMap) {
-      scene.environment = hdrEnvMap;
-    } else {
-      const rgbeLoader = new RGBELoader();
-      rgbeLoader.setDataType(THREE.UnsignedByteType);
-      rgbeLoader.load('assets/models/brown_photostudio_02_2k.hdr', (texture) => {
+    const loadHdr = (pathToLoad, isFallback) => {
+      rgbeLoader.load(pathToLoad, (texture) => {
         const pmremGenerator = new THREE.PMREMGenerator(renderer);
         pmremGenerator.compileEquirectangularShader();
         hdrEnvMap = pmremGenerator.fromEquirectangular(texture).texture;
+        currentHdrUrl = pathToLoad;
         pmremGenerator.dispose();
         texture.dispose();
         
-        const currentIsCouch = currentModelName.toLowerCase().includes('couch') || currentModelName.toLowerCase().includes('examination') || productName === 'Deluxe Examination Couch';
-        if (currentIsCouch) {
-          scene.environment = hdrEnvMap;
-        }
+        scene.environment = hdrEnvMap;
+        
+        // Force recompilation of materials to apply the new environment map on v0.128.0 CPU
+        scene.traverse((child) => {
+          if (child.isMesh && child.material) {
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.forEach(mat => {
+              if (mat.isMeshStandardMaterial) {
+                mat.needsUpdate = true;
+              }
+            });
+          }
+        });
       }, undefined, (err) => {
-        console.error('Error loading HDR environment map:', err);
+        console.warn(`Failed to load HDR map: ${pathToLoad}. Error:`, err);
+        if (!isFallback && pathToLoad !== defaultHdrPath) {
+          console.log('Falling back to default ICU HDR environment...');
+          loadHdr(defaultHdrPath, true);
+        }
       });
-    }
-  } else {
-    // No env map for standard models - direct lights accurately reproduce material colors
-    ambientLight.intensity = 1.0;
-    dirLight.intensity = 3.0;
-    fillLight.intensity = 1.0;
-    scene.environment = null;
+    };
+    
+    loadHdr(hdrPath, false);
   }
 }
 
@@ -130,6 +222,7 @@ let userColorsChanged = {
 };
 let currentModel    = null;
 let currentModelName = '';
+let currentModelUrl  = '';
 let isCurrentModelViewOnly = false;
 let meshMap         = {};        // key → { mesh, visible, name, triCount }
 let defaultCamPos   = null;
@@ -174,6 +267,19 @@ const gltfLoader = new GLTFLoader();
 const dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath('https://unpkg.com/three@0.128.0/examples/js/libs/draco/');
 gltfLoader.setDRACOLoader(dracoLoader);
+
+const ktx2Loader = new KTX2Loader();
+ktx2Loader.setTranscoderPath('https://unpkg.com/three@0.128.0/examples/js/libs/basis/');
+ktx2Loader.detectSupport(renderer);
+gltfLoader.setKTX2Loader(ktx2Loader);
+
+gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+
+// Suppress warning for EXT_mesh_gpu_instancing which is not natively supported in v128
+gltfLoader.register(parser => ({
+  name: 'EXT_mesh_gpu_instancing'
+}));
+
 const objLoader  = new OBJLoader();
 
 // == Load Model ===============================================================
@@ -183,6 +289,7 @@ function loadModel(fileOrUrl, fileName) {
   const url = isUrl ? fileOrUrl : URL.createObjectURL(fileOrUrl);
   const name = isUrl ? (fileName || fileOrUrl.split('/').pop()) : fileOrUrl.name;
   currentModelName = name;
+  currentModelUrl  = isUrl ? fileOrUrl : '';
 
   // Dynamically update product name based on loaded model
   const lowerName = name.toLowerCase();
@@ -284,30 +391,83 @@ function loadModel(fileOrUrl, fileName) {
 
     currentModel = modelGroup;
 
-    // Keep original scale/measurements (do not normalise scale)
-    const scale  = 1;
-    modelGroup.scale.setScalar(scale);
+    // Clean geometry: Collapse outlier triangles (stray geometry > 10m away from origin in world space) directly in the buffer
+    modelGroup.updateMatrixWorld(true);
+    const tempVertex = new THREE.Vector3();
+    modelGroup.traverse(child => {
+      if (child.isMesh && child.geometry && child.geometry.attributes.position) {
+        const posAttr = child.geometry.attributes.position;
+        const matrix = child.matrixWorld;
+        let modified = false;
 
-    // Centre on ground plane
-    const box    = new THREE.Box3().setFromObject(modelGroup);
-    const centre = box.getCenter(new THREE.Vector3());
-    modelGroup.position.sub(centre);
-    box.setFromObject(modelGroup);
-    modelGroup.position.y -= box.min.y;
+        const isOutlierVertex = (idx) => {
+          tempVertex.set(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx));
+          tempVertex.applyMatrix4(matrix);
+          return (Math.abs(tempVertex.x) >= 10 || Math.abs(tempVertex.z) >= 10);
+        };
 
-     // Collect meshes + shadows
+        const collapseVertex = (idx) => {
+          posAttr.setXYZ(idx, 0, 0, 0);
+        };
+
+        if (child.geometry.index) {
+          const indexAttr = child.geometry.index;
+          const indices = indexAttr.array;
+          for (let i = 0; i < indices.length; i += 3) {
+            const idx0 = indices[i];
+            const idx1 = indices[i+1];
+            const idx2 = indices[i+2];
+            if (isOutlierVertex(idx0) || isOutlierVertex(idx1) || isOutlierVertex(idx2)) {
+              collapseVertex(idx0);
+              collapseVertex(idx1);
+              collapseVertex(idx2);
+              modified = true;
+            }
+          }
+        } else {
+          for (let i = 0; i < posAttr.count; i += 3) {
+            const idx0 = i;
+            const idx1 = i + 1;
+            const idx2 = i + 2;
+            if (isOutlierVertex(idx0) || isOutlierVertex(idx1) || isOutlierVertex(idx2)) {
+              collapseVertex(idx0);
+              collapseVertex(idx1);
+              collapseVertex(idx2);
+              modified = true;
+            }
+          }
+        }
+
+        if (modified) {
+          posAttr.needsUpdate = true;
+          child.geometry.computeBoundingBox();
+          child.geometry.computeBoundingSphere();
+        }
+      }
+    });
+
+    // Keep original scale/measurements (do not override scale in GLB)
+    // modelGroup.scale.setScalar(scale);
+
+    // Get bounding box of the cleaned model
+    const box = new THREE.Box3().setFromObject(modelGroup);
+
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxSz = Math.max(size.x, size.y, size.z);
+
+     // Collect meshes + shadows + standard material reflections
      let totalTris = 0;
      modelGroup.traverse((child) => {
        if (!child.isMesh) return;
+
        child.castShadow    = true;
        child.receiveShadow = true;
-       // Fix the incorrect metalness/roughness in the GLB for the ABS plastic railings
        if (child.material) {
          const materials = Array.isArray(child.material) ? child.material : [child.material];
          materials.forEach(mat => {
-           if (false && mat.name && mat.name.toLowerCase() === 'abs_siderail') {
-             mat.metalness = 0.0;
-             mat.roughness = 0.45;
+           if (mat.isMeshStandardMaterial) {
+             mat.envMapIntensity = 1.5; // Highly realistic reflections
              mat.needsUpdate = true;
            }
          });
@@ -324,53 +484,78 @@ function loadModel(fileOrUrl, fileName) {
       }
 
       const parentName = (child.parent && child.parent.name && child.parent.name !== 'Scene' && child.parent.name !== 'RootNode') ? child.parent.name : '';
-      const rawName = parentName || child.name || `Mesh`;
-      const key     = rawName;
-      
-      if (meshMap[key]) {
-        meshMap[key].meshes.push(child);
-        meshMap[key].triCount += triCount;
+      const nodeName = child.name || parentName || '';
+      const isGeneric = !nodeName || 
+                        nodeName.toLowerCase() === 'mesh' || 
+                        nodeName.toLowerCase().includes('3d_model') || 
+                        nodeName.toLowerCase() === 'scene' || 
+                        nodeName.toLowerCase() === 'rootnode';
+                        
+      if (!isGeneric && nodeName) {
+        const key = nodeName.trim();
+        if (meshMap[key]) {
+          meshMap[key].meshes.push(child);
+          meshMap[key].triCount += triCount;
+        } else {
+          meshMap[key] = { meshes: [child], visible: true, name: key, triCount };
+        }
+      } else if (child.material) {
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach(mat => {
+          const matName = mat.name ? mat.name.trim() : '';
+          const key = matName || `Mesh`;
+          if (meshMap[key]) {
+            if (!meshMap[key].meshes.includes(child)) {
+              meshMap[key].meshes.push(child);
+            }
+            meshMap[key].triCount += triCount / materials.length;
+          } else {
+            meshMap[key] = { meshes: [child], visible: true, name: key, triCount: triCount / materials.length };
+          }
+        });
       } else {
-        meshMap[key] = { meshes: [child], visible: true, name: rawName, triCount };
+        const key = `Mesh`;
+        if (meshMap[key]) {
+          meshMap[key].meshes.push(child);
+          meshMap[key].triCount += triCount;
+        } else {
+          meshMap[key] = { meshes: [child], visible: true, name: key, triCount };
+        }
       }
     });
 
+    // Center model horizontally (X and Z) but place bottom on floor y = 0
+    modelGroup.position.set(-center.x, -box.min.y, -center.z);
+
     scene.add(modelGroup);
 
-    const box2      = new THREE.Box3().setFromObject(modelGroup);
-    const sz2       = box2.getSize(new THREE.Vector3());
-    let maxSz       = Math.max(sz2.x, sz2.y, sz2.z);
-    if (!maxSz || isNaN(maxSz) || maxSz === 0) maxSz = 1;
-
-    const footprint = Math.max(sz2.x, sz2.z, 1);
-    const d = footprint * 1.5;
-    dirLight.shadow.camera.left = -d;
-    dirLight.shadow.camera.right = d;
-    dirLight.shadow.camera.top = d;
-    dirLight.shadow.camera.bottom = -d;
+    // Adjust shadow camera bounds to fit model size perfectly (minimum 10m to avoid sharp clipping lines near small models)
+    const halfWidth = Math.max(Math.max(size.x, size.z) * 1.5, 10.0);
+    dirLight.shadow.camera.left = -halfWidth;
+    dirLight.shadow.camera.right = halfWidth;
+    dirLight.shadow.camera.top = halfWidth;
+    dirLight.shadow.camera.bottom = -halfWidth;
+    dirLight.shadow.camera.near = 0.1;
+    dirLight.shadow.camera.far = maxSz * 4;
+    
+    // Position directional light to cast nice angled soft shadows
+    dirLight.position.set(halfWidth * 0.5, maxSz * 2.0, halfWidth * 0.8);
     dirLight.shadow.camera.updateProjectionMatrix();
 
-    // Fit camera safely (closer zoom-in version)
-    const fov    = camera.fov * (Math.PI / 180);
-    let dist     = (maxSz / 2) / Math.tan(fov / 2) * 1.25;
-    if (!dist || isNaN(dist) || dist < 0.1) dist = 2.0;
-    
-    const target = box2.getCenter(new THREE.Vector3());
-    if (isNaN(target.x) || isNaN(target.y) || isNaN(target.z)) {
-      target.set(0, 0, 0);
-    }
-    
-    camera.position.set(target.x + dist * 0.6, target.y + dist * 0.5, target.z + dist);
-    controls.target.copy(target);
+    // Position camera dynamically based on model size
+    const fov = camera.fov * (Math.PI / 180);
+    let dist = (maxSz / 2) / Math.tan(fov / 2) * 1.35;
+    if (!dist || isNaN(dist) || dist < 0.1) dist = 2.5;
 
-    // Limit zoom out distance to 100% of the initial view
-    controls.maxDistance = camera.position.distanceTo(target) * 2; // Allow some extra zoom out room
+    camera.position.set(0, maxSz * 0.8, dist);
+    controls.target.set(0, maxSz * 0.4, 0); // Target center of the object
+    controls.maxDistance = dist * 3;
     controls.update();
 
-    console.log(`[Configurator] Loaded: ${name} | Size: ${maxSz.toFixed(2)} | Cam distance: ${dist.toFixed(2)} | Target: ${target.x.toFixed(2)}, ${target.y.toFixed(2)}, ${target.z.toFixed(2)}`);
+    console.log(`[Configurator] Loaded: ${name} | Size: ${maxSz.toFixed(2)} | Cam distance: ${dist.toFixed(2)}`);
 
     defaultCamPos    = camera.position.clone();
-    defaultCamTarget = target.clone();
+    defaultCamTarget = controls.target.clone();
 
     axesHelper.scale.setScalar(maxSz * 0.15);
 
@@ -383,16 +568,16 @@ function loadModel(fileOrUrl, fileName) {
     document.getElementById('badge-stats').textContent =
       `${Object.keys(meshMap).length} meshes . ${Math.round(totalTris).toLocaleString()} tris`;
 
-    showToast(`Loaded: "${name}" | Size: ${maxSz.toFixed(2)}m | Cam Dist: ${dist.toFixed(2)}m`);
+    showToast(`Loaded: "${name}" | Size: ${maxSz.toFixed(2)}m`);
 
     // Hide/show sections dynamically based on model type
-    const isIcu = productName === 'ICU Cot' || name.toLowerCase().includes('icu');
-    const isFowler = productName === 'Fowler Cot' || name.toLowerCase().includes('fowler');
-    const isCouch = productName === 'Deluxe Examination Couch' || name.toLowerCase().includes('couch');
-    const isHiLo = productName === 'Hi-Lo Structure' || name.toLowerCase().includes('hi-lo') || name.toLowerCase().includes('strecher');
-    const isLabor = productName === 'Deluxe Double Door Attender Cot' || name.toLowerCase().includes('labor-cot') || name.toLowerCase().includes('double-door');
+    const isIcu = productName === 'ICU Cot';
+    const isFowler = productName === 'Fowler Cot';
+    const isCouch = productName === 'Deluxe Examination Couch';
+    const isHiLo = productName === 'Hi-Lo Strecher';
+    const isLabor = productName === 'Labor Cot';
     
-    updateEnvironment(isCouch);
+    updateEnvironment();
     
     const sectionHeadFoot = document.getElementById('config-section-headfoot');
     const sectionSideRails = document.getElementById('config-section-siderails');
@@ -487,7 +672,15 @@ function loadModel(fileOrUrl, fileName) {
     if (myGen !== loadGeneration) return;
     loadingEl.classList.remove('visible');
     console.error('Model load error:', err);
-    showToast('Failed to load model');
+    let errorMsg = 'Failed to load model';
+    if (err && err.message) {
+      errorMsg += ': ' + err.message;
+    } else if (err && err.target && err.target.status) {
+      errorMsg += ' (HTTP ' + err.target.status + ')';
+    } else if (err && err.type) {
+      errorMsg += ' (' + err.type + ')';
+    }
+    showToast(errorMsg);
   });
 }
 
@@ -629,11 +822,34 @@ function toggleMesh(key, visible) {
   const entry      = meshMap[key];
   if (!entry) return;
   entry.visible    = visible;
+  
   entry.meshes.forEach(mesh => {
-    mesh.visible = visible;
     if (mesh.material) {
       const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      mats.forEach(m => { m.wireframe = visible ? wireframeMode : false; });
+      let anyMatVisible = false;
+      
+      mats.forEach(m => {
+        const matName = (m.name || '').trim();
+        // If this mesh is grouped by material name, only toggle the matching material
+        if (matName === entry.name) {
+          m.visible = visible;
+        }
+        if (m.visible) {
+          anyMatVisible = true;
+        }
+        // Apply wireframe mode
+        m.wireframe = m.visible ? wireframeMode : false;
+      });
+
+      // If the mesh is multi-material, keep the mesh node itself visible if ANY of its materials are visible
+      if (Array.isArray(mesh.material)) {
+        mesh.visible = anyMatVisible;
+      } else {
+        // If it's a single material mesh, set the mesh visibility directly
+        mesh.visible = visible;
+      }
+    } else {
+      mesh.visible = visible;
     }
   });
 
@@ -652,12 +868,18 @@ function focusMesh(key, itemEl, forceSelect = false) {
   if (selectedMesh === key && !forceSelect) {
     selectedMesh = null;
     itemEl.classList.remove('active');
+    applyCurrentConfig(); // Restore normal configuration visibility on deselect
     return;
   }
 
   meshListEl.querySelectorAll('.mesh-item.active').forEach(el => el.classList.remove('active'));
   selectedMesh = key;
   itemEl.classList.add('active');
+
+  // Auto-isolate: Hide all other meshes, show only the selected one
+  Object.keys(meshMap).forEach(k => {
+    toggleMesh(k, k === key);
+  });
 
   const entry = meshMap[key];
   const box   = new THREE.Box3();
@@ -697,9 +919,8 @@ function updateStats() {
   document.getElementById('stat-tris').textContent = tris > 0 ? Math.round(tris).toLocaleString() : '-';
 }
 
-// == Set default configuration based on model ==================================
 function setDefaultConfigForModel(name) {
-  const lower = name.toLowerCase();
+  const lower = (currentModelUrl || name || '').toLowerCase();
   
   // Define defaults per model
   let defaults = {
@@ -729,10 +950,26 @@ function setDefaultConfigForModel(name) {
   } else if (lower.includes('hi-lo') || lower.includes('hi_lo') || lower.includes('hilo')) {
     defaults = {
       headfoot: 'ms',
-      siderails: 'ms',
+      siderails: 'ssplain',
       mattress: 'zip',
       wheel: 'wheel',
       operation: 'remote'
+    };
+  } else if (lower.includes('labor')) {
+    defaults = {
+      headfoot: 'ss',
+      siderails: 'ssplain',
+      mattress: 'plain',
+      wheel: 'wheel',
+      operation: 'manual'
+    };
+  } else if (lower.includes('fowler')) {
+    defaults = {
+      headfoot: 'ms',
+      siderails: 'ms',
+      mattress: 'zip',
+      wheel: 'without',
+      operation: 'manual'
     };
   } else if (lower.includes('couch') || lower.includes('examination')) {
     defaults = {
@@ -824,30 +1061,32 @@ function applyCurrentConfig() {
         if (name.includes('m1') || name.includes('ms') || name.includes('abs')) visible = false;
       } else if (headfoot === 'abs' || headfoot === 'abs1') {
         if (name.includes('m1') || name.includes('ms') || name.includes('s3') || name.includes('ss')) visible = false;
-        if (name.includes('abs') && (name.includes('2') || name.includes('abs-2') || name.includes('abs2') || name.includes('abs_2'))) visible = false;
+        const isAbs2 = name.includes('abs2') || name.includes('abs-2') || name.includes('abs_2') || name.includes('abs 2');
+        if (name.includes('abs') && isAbs2) visible = false;
       } else if (headfoot === 'abs2') {
         if (name.includes('m1') || name.includes('ms') || name.includes('s3') || name.includes('ss')) visible = false;
-        if (name.includes('abs') && !(name.includes('2') || name.includes('abs-2') || name.includes('abs2') || name.includes('abs_2'))) visible = false;
+        const isAbs2 = name.includes('abs2') || name.includes('abs-2') || name.includes('abs_2') || name.includes('abs 2');
+        if (name.includes('abs') && !isAbs2) visible = false;
       }
     }
 
+
     // Side Rails matching
-    const isRailMesh = name.includes('rail') || name.includes('side') || name.includes('collapsible') || name.includes('colapsable') || name.includes('ac-') || name.includes('ac_');
+    const isRailMesh = name.includes('rail') || name.includes('side') || name.includes('collapsible') || name.includes('colapsable') || name.includes('ac-') || name.includes('ac_') || name.includes('pipe');
     if (isRailMesh) {
-      const isAlum = name.includes('aluminium') || name.includes('ac-') || name.includes('ac_') || name.includes('ac siderailings');
+      const isAlum = (name.includes('aluminium') || name.includes('ac-') || name.includes('ac_') || name.includes('ac siderailings')) && !name.includes('002');
+      const isSsCollapsible = name.includes('ss_collaps') || name.includes('sscollaps') || name.includes('002');
       
       if (siderails === 'ms') {
-        if (name.includes('ss') || name.includes('abs') || isAlum || name.includes('collapsible') || name.includes('colapsable')) visible = false;
+        if (name.includes('ss') || name.includes('abs') || isAlum || isSsCollapsible) visible = false;
       } else if (siderails === 'ssplain') {
-        if (name.includes('ms') || name.includes('abs') || isAlum || name.includes('collapsible') || name.includes('colapsable')) visible = false;
+        if (name.includes('ms') || name.includes('abs') || isAlum || isSsCollapsible) visible = false;
       } else if (siderails === 'abs') {
-        if (name.includes('ms') || name.includes('ss') || isAlum || name.includes('collapsible') || name.includes('colapsable')) visible = false;
+        if (name.includes('ms') || name.includes('ss') || isAlum || isSsCollapsible) visible = false;
       } else if (siderails === 'aluminium') {
-        if (name.includes('ms') || name.includes('abs') || name.includes('ss') || !isAlum) visible = false;
+        if (name.includes('ms') || name.includes('abs') || name.includes('ss') || !isAlum || isSsCollapsible) visible = false;
       } else if (siderails === 'sscollapsible') {
-        if (name.includes('ms') || name.includes('abs') || isAlum) visible = false;
-        if (name.includes('ss') && !name.includes('collapsible') && !name.includes('colapsable')) visible = false;
-        if (!name.includes('ss')) visible = false;
+        if (name.includes('ms') || name.includes('abs') || isAlum || !isSsCollapsible) visible = false;
       }
     }
 
@@ -910,7 +1149,7 @@ function applyColorToMeshes(hexColorStr) {
   const hex = parseInt(hexColorStr.replace('#', ''), 16);
 
   if (selectedMesh && meshMap[selectedMesh]) {
-    meshMap[selectedMesh].meshes.forEach(mesh => setColorOnMesh(mesh, hex));
+    meshMap[selectedMesh].meshes.forEach(mesh => setColorOnMesh(mesh, hex, meshMap[selectedMesh].name));
     return;
   }
 
@@ -927,7 +1166,7 @@ function applyColorToMeshes(hexColorStr) {
     const isAbs = name.includes('abs') || isAbsRail;
 
     if (entry.visible && !name.includes('mattress') && !isAbs && (name.includes('panel') || name.includes('rail') || name.includes('frame') || name.includes('board') || name.includes('head') || name.includes('foot') || name.includes('body') || name.includes('support'))) {
-      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex));
+      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex, entry.name));
     }
   });
 }
@@ -941,7 +1180,7 @@ function applyMattressColor(hexColorStr) {
     const entry = meshMap[key];
     const name = entry.name.toLowerCase();
     if (entry.visible && (name.includes('mattress') || name.includes('mattres') || name.includes('zipper') || name.includes('zip') || name.includes('cube.020'))) {
-      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex));
+      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex, entry.name));
     }
   });
 }
@@ -1035,7 +1274,7 @@ function applyCouchCabinetColor(hexColorStr) {
     const isCabinet = name.includes('cabinet') || name.includes('cabin') || name.includes('footer') || name.includes('mini_drawer') || name.includes('mini-drawer');
     
     if (entry.visible && isCabinet) {
-      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex));
+      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex, entry.name));
     }
   });
 }
@@ -1052,12 +1291,12 @@ function applyCouchDrawerColor(hexColorStr) {
     const isMiniDrawer = name.includes('mini_drawer') || name.includes('mini-drawer');
     
     if (entry.visible && isDrawer && !isMiniDrawer) {
-      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex));
+      entry.meshes.forEach(mesh => setColorOnMesh(mesh, hex, entry.name));
     }
   });
 }
 
-function setColorOnMesh(mesh, hex) {
+function setColorOnMesh(mesh, hex, targetMaterialName) {
   if (!mesh.material) return;
   
   // Helper to check if a material represents metal or a handle
@@ -1078,10 +1317,8 @@ function setColorOnMesh(mesh, hex) {
   };
 
   // Safely clone a material while explicitly preserving all PBR properties
-  // (.clone() copies them but we are explicit to be safe and self-documenting)
   const cloneMat = (mat) => {
     const cloned = mat.clone();
-    // Explicitly carry over PBR surface properties so they are NEVER lost
     cloned.roughness        = mat.roughness;
     cloned.metalness        = mat.metalness;
     cloned.roughnessMap     = mat.roughnessMap;
@@ -1092,6 +1329,7 @@ function setColorOnMesh(mesh, hex) {
     cloned.aoMap            = mat.aoMap;        // ambient occlusion
     cloned.aoMapIntensity   = mat.aoMapIntensity;
     cloned.envMapIntensity  = mat.envMapIntensity;
+    cloned.envMap           = mat.envMap;
     cloned.transparent      = mat.transparent;
     cloned.opacity          = mat.opacity;
     cloned.side             = mat.side;
@@ -1101,16 +1339,23 @@ function setColorOnMesh(mesh, hex) {
 
   if (Array.isArray(mesh.material)) {
     mesh.material = mesh.material.map(mat => {
+      const matName = (mat.name || '').trim();
+      if (targetMaterialName && matName !== targetMaterialName) {
+        return mat; // Keep original material untouched if it doesn't match target
+      }
       if (isMetalOrHandleMaterial(mat)) {
         return mat; // Keep original metal/handle material untouched
       }
       const cloned = cloneMat(mat);
       if (cloned.color) cloned.color.setHex(hex);
-      // Zero emissive only if it exists (not all material types have it)
       if (cloned.emissive) cloned.emissive.setHex(0x000000);
       return cloned;
     });
   } else {
+    const matName = (mesh.material.name || '').trim();
+    if (targetMaterialName && matName !== targetMaterialName) {
+      return;
+    }
     if (isMetalOrHandleMaterial(mesh.material)) {
       return; // Keep original metal/handle material untouched
     }
@@ -1393,6 +1638,12 @@ inspectorToggleBtn.addEventListener('click', () => {
 closeInspectorBtn.addEventListener('click', () => {
   inspectorSidebar.classList.remove('open');
   inspectorToggleBtn.classList.remove('active');
+  if (selectedMesh) {
+    const itemEl = meshListEl.querySelector(`[data-key="${selectedMesh}"]`);
+    if (itemEl) itemEl.classList.remove('active');
+    selectedMesh = null;
+    applyCurrentConfig(); // Restore configuration visibility when closing inspector
+  }
 });
 
 // == Toolbar actions ===========================================================
@@ -1515,6 +1766,14 @@ function onCanvasClick(event) {
         itemEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         focusMesh(matchedKey, itemEl, true);
       }
+    }
+  } else {
+    // Clicked empty space: deselect selection and restore normal config visibility
+    if (selectedMesh) {
+      const itemEl = meshListEl.querySelector(`[data-key="${selectedMesh}"]`);
+      if (itemEl) itemEl.classList.remove('active');
+      selectedMesh = null;
+      applyCurrentConfig();
     }
   }
 }
@@ -1669,22 +1928,22 @@ try {
   const modelQuery = (urlParams.get('model') || hashVal || '').toLowerCase();
   
   if (modelQuery.includes('deluxe-examination-couch') || modelQuery.includes('couch') || modelQuery.includes('examination')) {
-    defaultModel = 'assets/models/customisation-models/deluxe-examination-couch.glb';
+    defaultModel = 'assets/models/customisation-models/deluxe-examination-couch/3d_model.glb';
     productName = 'Deluxe Examination Couch';
   } else if (modelQuery.includes('semi-fowler') || modelQuery.includes('semi_fowler')) {
     defaultModel = 'assets/models/view-only-models/semi-fowler-cot.glb';
     productName = 'Semi Fowler Cot';
   } else if (modelQuery.includes('fowler-cot') || modelQuery.includes('fowler')) {
-    defaultModel = 'assets/models/customisation-models/fowler-cot.glb';
+    defaultModel = 'assets/models/customisation-models/fowler-cot/3d_model.glb';
     productName = 'Fowler Cot';
   } else if (modelQuery.includes('hi-lo') || modelQuery.includes('hilo') || modelQuery.includes('strecher')) {
-    defaultModel = 'assets/models/customisation-models/hi-lo-strecher.glb';
+    defaultModel = 'assets/models/customisation-models/hi-lo-stretcher/3d_model.glb';
     productName = 'Hi-Lo Strecher';
   } else if (modelQuery.includes('icu')) {
-    defaultModel = 'assets/models/customisation-models/icu-cot.glb';
+    defaultModel = 'assets/models/customisation-models/icu-cot/3d_model.glb';
     productName = 'ICU Cot';
   } else if (modelQuery.includes('labor-cot') || modelQuery.includes('deluxe-double-door') || modelQuery.includes('deluxe_double_door')) {
-    defaultModel = 'assets/models/customisation-models/labor-cot.glb';
+    defaultModel = 'assets/models/customisation-models/labor-cot/3d_model.glb';
     productName = 'Labor Cot';
   } else if (modelQuery.includes('over-bed-table') || modelQuery.includes('overbed')) {
     defaultModel = 'assets/models/view-only-models/over-bed-table.glb';
