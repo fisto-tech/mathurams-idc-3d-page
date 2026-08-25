@@ -158,6 +158,19 @@ function loadModel(fileOrUrl, fileName) {
   modelViewer.cameraTarget = modelInitialTarget;
   modelViewer.fieldOfView = modelInitialFov;
 
+  // Set model-specific exposure & environment image
+  if (modelKey === 'bedside-locker') {
+    modelViewer.environmentImage = 'legacy';
+  } else {
+    modelViewer.removeAttribute('environment-image');
+  }
+
+  if (modelKey === 'bedside-locker-deluxe') {
+    modelViewer.exposure = 0.75;
+  } else {
+    modelViewer.exposure = 1.0;
+  }
+
   // Handle auto-rotate delay on load
   modelViewer.autoRotate = false;
   clearTimeout(initialAutoRotateTimeout);
