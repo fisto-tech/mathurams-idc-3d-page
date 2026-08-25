@@ -25,7 +25,7 @@
   <meta name="description" content="Interactive 3D product configurator for Sri Mathurams Medical Engineering beds, cots, and hospital furniture." />
   <link rel="icon" href="assets/images/logo-icon.svg" />
   <title>Mathurams IDC 3D Customisation</title>
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=5" />
   <script>
     self.ModelViewerElement = self.ModelViewerElement || {};
     self.ModelViewerElement.meshoptDecoderLocation = 'https://unpkg.com/meshoptimizer@0.17.0/meshopt_decoder.js';
@@ -39,29 +39,11 @@
   <!-- Top Bar -->
   <header id="topbar">
     <div class="header-left">
-      <button class="back-btn" onclick="alert('Going back to product catalogue...')" title="Back to catalogue">&larr;<span class="back-btn-text">Back To Product</span></button>
+      <button class="back-btn" id="back-btn" title="Back to product">&larr;<span class="back-btn-text">Back To Product</span></button>
       <div class="topbar-file-info" id="file-label">No file loaded &mdash; <span>Drop 3D file to begin</span></div>
     </div>
     
-    <div class="product-selector-container">
-      <select id="product-selector" class="product-select">
-        <optgroup label="🛠️ Customisation Models">
-          <option value="fowler-cot">Fowler Cot (Customisation)</option>
-          <option value="icu">ICU Cot</option>
-          <option value="labor-cot">Labor Cot</option>
-          <option value="hi-lo">Hi-Lo Strecher</option>
-          <option value="couch">Deluxe Examination Couch</option>
-        </optgroup>
-        <optgroup label="👁️ View-Only Models">
-          <option value="semi-fowler" selected>Semi Fowler Cot (View-Only)</option>
-          <option value="over-bed-table">Over Bed Table</option>
-          <option value="attender-cot-deluxe">Attender Cot Deluxe</option>
-          <option value="attender-cot">Attender Cot Plain</option>
-          <option value="bedside-locker-deluxe">Bed Sidelocker Deluxe Wood</option>
-          <option value="bedside-locker">Bedside Locker Plain</option>
-        </optgroup>
-      </select>
-    </div>
+    <div class="product-title-center" id="product-title"></div>
     
     <div class="header-right">
       <button id="upload-btn">
@@ -95,9 +77,51 @@
 
   <!-- Left Configuration Panel -->
   <aside id="sidebar-config">
-    <!-- A. Head & Foot Panel -->
+    <!-- Skeleton Loader -->
+    <div id="sidebar-skeleton">
+      <div class="skeleton-section">
+        <div class="skeleton-title shimmer"></div>
+        <div class="skeleton-radio shimmer"></div>
+        <div class="skeleton-radio shimmer"></div>
+      </div>
+      <div class="skeleton-section">
+        <div class="skeleton-title shimmer"></div>
+        <div class="skeleton-grid">
+          <div class="skeleton-card shimmer"></div>
+          <div class="skeleton-card shimmer"></div>
+          <div class="skeleton-card shimmer"></div>
+        </div>
+      </div>
+      <div class="skeleton-section">
+        <div class="skeleton-title shimmer"></div>
+        <div class="skeleton-grid">
+          <div class="skeleton-card shimmer"></div>
+          <div class="skeleton-card shimmer"></div>
+          <div class="skeleton-card shimmer"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A. BED TYPE -->
+    <div class="config-section" id="config-section-operation">
+      <div class="config-section-title">A. BED TYPE</div>
+      <div class="radio-group">
+        <label class="radio-option">
+          <input type="radio" name="operation" value="manual" checked />
+          <span class="radio-custom"></span>
+          Manual
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="operation" value="remote" />
+          <span class="radio-custom"></span>
+          Remote
+        </label>
+      </div>
+    </div>
+
+    <!-- B. Head & Foot Panel -->
     <div class="config-section" id="config-section-headfoot">
-      <div class="config-section-title">A. Head &amp; Foot End Panel</div>
+      <div class="config-section-title">B. Head &amp; Foot End Panel</div>
       <div class="card-grid col-3">
         <div class="config-card active" data-section="headfoot" data-value="ms">
           <div class="selection-indicator"></div>
@@ -171,9 +195,9 @@
       </div>
     </div>
 
-    <!-- B. Side Rails -->
+    <!-- C. Side Rails -->
     <div class="config-section" id="config-section-siderails">
-      <div class="config-section-title">B. Side Rails</div>
+      <div class="config-section-title">C. Side Rails</div>
       <div class="card-grid col-3">
         <div class="config-card active" data-section="siderails" data-value="ms">
           <div class="selection-indicator"></div>
@@ -252,9 +276,9 @@
       </div>
     </div>
 
-    <!-- C. Mattress Type -->
+    <!-- D. Mattress Type -->
     <div class="config-section" id="config-section-mattress">
-      <div class="config-section-title">C. Mattress Type</div>
+      <div class="config-section-title">D. Mattress Type</div>
       <div class="radio-group">
         <label class="radio-option">
           <input type="radio" name="mattress" value="zip" checked />
@@ -412,9 +436,9 @@
       </div>
     </div>
 
-    <!-- D. Wheel Type -->
+    <!-- E. Wheel Type -->
     <div class="config-section" id="config-section-wheel">
-      <div class="config-section-title">D. Wheel Type</div>
+      <div class="config-section-title">E. Wheel Type</div>
       <div class="radio-group">
         <label class="radio-option">
           <input type="radio" name="wheel" value="without" checked />
@@ -429,51 +453,9 @@
       </div>
     </div>
 
-    <!-- E. Operation -->
-    <div class="config-section" id="config-section-operation">
-      <div class="config-section-title">E. Operation</div>
-      <div class="radio-group">
-        <label class="radio-option">
-          <input type="radio" name="operation" value="manual" checked />
-          <span class="radio-custom"></span>
-          Manual
-        </label>
-        <label class="radio-option">
-          <input type="radio" name="operation" value="remote" />
-          <span class="radio-custom"></span>
-          Remote
-        </label>
-      </div>
-    </div>
   </aside>
 
-  <!-- Developer Mesh Inspector (Slide out drawer) -->
-  <aside id="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-title">Mesh Inspector</div>
-      <button class="close-inspector-btn" id="close-inspector-btn">&times;</button>
-      <div class="sidebar-actions">
-        <button class="action-btn" id="show-all-btn">Show All</button>
-        <button class="action-btn" id="hide-all-btn">Hide All</button>
-        <button class="action-btn" id="isolate-btn">Isolate</button>
-      </div>
-      <input type="text" id="mesh-search" placeholder="Search meshes..." />
-    </div>
 
-    <div id="mesh-list">
-      <div id="empty-state">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-        </svg>
-        <p>Load a model file to inspect individual meshes</p>
-      </div>
-    </div>
-
-    <div id="sidebar-footer">
-      <div><strong id="stat-meshes">0</strong> meshes &nbsp;&middot;&nbsp; <strong id="stat-visible">0</strong> visible</div>
-      <div><strong id="stat-tris">&mdash;</strong> triangles total</div>
-    </div>
-  </aside>
 
   <!-- Canvas Wrap -->
   <div id="canvas-wrap">
@@ -491,6 +473,20 @@
       <label class="auto-rotate-toggle">
         <input type="checkbox" id="auto-rotate-toggle-cb" checked />
         <span class="auto-rotate-slider"></span>
+      </label>
+    </div>
+    
+    <!-- Pan Model Switch in Top Right -->
+    <div id="pan-model-card">
+      <div class="pan-model-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="pan-model-label">Pan Model</span>
+      <label class="pan-model-toggle">
+        <input type="checkbox" id="pan-model-toggle-cb" />
+        <span class="pan-model-slider"></span>
       </label>
     </div>
 
@@ -521,11 +517,6 @@
 
     <!-- HUD buttons -->
     <div id="hud">
-      <button class="hud-btn" id="inspector-toggle-btn" title="Mesh Inspector">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-        </svg>
-      </button>
       <button class="hud-btn" id="reset-cam-btn" title="Reset camera">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
@@ -543,12 +534,28 @@
           <line x1="3" y1="15" x2="21" y2="15"/>
         </svg>
       </button>
-      <div class="hud-btn" title="Background color" style="position: relative;">
-        <input type="color" id="bg-color-picker" value="#424357" style="position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer;" />
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <circle cx="12" cy="12" r="6" fill="currentColor"/>
-        </svg>
+      <div class="hud-btn-container" style="position: relative; display: inline-block;">
+        <button class="hud-btn" id="bg-palette-btn" title="Background color">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="6" fill="currentColor"/>
+          </svg>
+        </button>
+        <div class="bg-palette-popover" id="bg-palette-popover">
+          <div class="custom-color-picker-container">
+            <div class="color-map-wrapper">
+              <canvas id="color-map" width="180" height="120"></canvas>
+              <div id="color-map-cursor"></div>
+            </div>
+            <div class="hue-bar-wrapper">
+              <input type="range" id="hue-slider" min="0" max="360" value="230" />
+            </div>
+            <div class="color-preview-row">
+              <div id="color-preview-swatch"></div>
+              <input type="text" id="color-hex-input" value="#424357" readonly />
+            </div>
+          </div>
+        </div>
       </div>
       <button class="hud-btn" id="bg-btn" title="Cycle background">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -559,14 +566,115 @@
           <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
         </svg>
       </button>
+      <button class="hud-btn" id="fullscreen-btn" title="Toggle Fullscreen">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </div>
 
     <div id="axes-label">X &middot; Y &middot; Z</div>
+    <div id="toast"></div>
   </div>
 
-</div>
+  <!-- Homescreen Selector -->
+  <main id="homescreen">
+    <div class="homescreen-hero">
+      <h1>Sri Mathurams Medical Engineering</h1>
+      <p>Select a product model to begin customisation or 3D viewing</p>
+    </div>
+    
+    <div class="product-grid-section">
+      <h2 class="section-heading">Customisation Models</h2>
+      <div class="product-grid">
+        <a href="#fowler-cot" class="product-card">
+          <div class="product-card-preview">
+            <model-viewer src="assets/models/customisation-models/fowler-cot/3d_model.glb" loading="lazy" auto-rotate rotation-per-second="12deg" interaction-prompt="none" shadow-intensity="0.5" shadow-softness="0.8" style="width:100%; height:100%; pointer-events:none;"></model-viewer>
+          </div>
+          <h3>Fowler Cot</h3>
+          <p>Customise head & foot panel, rails, wheels, and operation modes</p>
+        </a>
+        <a href="#icu" class="product-card">
+          <div class="product-card-preview">
+            <model-viewer src="assets/models/customisation-models/icu-cot/3d_model.glb" loading="lazy" auto-rotate rotation-per-second="12deg" interaction-prompt="none" shadow-intensity="0.5" shadow-softness="0.8" style="width:100%; height:100%; pointer-events:none;"></model-viewer>
+          </div>
+          <h3>ICU Cot</h3>
+          <p>Full 3D customisation with dynamic part replacement</p>
+        </a>
+        <a href="#labor-cot" class="product-card">
+          <div class="product-card-preview">
+            <model-viewer src="assets/models/customisation-models/labor-cot/3d_model.glb" loading="lazy" auto-rotate rotation-per-second="12deg" interaction-prompt="none" shadow-intensity="0.5" shadow-softness="0.8" style="width:100%; height:100%; pointer-events:none;"></model-viewer>
+          </div>
+          <h3>Labor Cot</h3>
+          <p>Explore medical delivery beds options</p>
+        </a>
+        <a href="#hi-lo" class="product-card">
+          <div class="product-card-preview">
+            <model-viewer src="assets/models/customisation-models/hi-lo-stretcher/3d_model.glb" loading="lazy" auto-rotate rotation-per-second="12deg" interaction-prompt="none" shadow-intensity="0.5" shadow-softness="0.8" style="width:100%; height:100%; pointer-events:none;"></model-viewer>
+          </div>
+          <h3>Hi-Lo Stretcher</h3>
+          <p>Interactive configurator for patient transfer stretchers</p>
+        </a>
+        <a href="#couch" class="product-card">
+          <div class="product-card-preview">
+            <model-viewer src="assets/models/customisation-models/deluxe-examination-couch/3d_model.glb" loading="lazy" auto-rotate rotation-per-second="12deg" interaction-prompt="none" shadow-intensity="0.5" shadow-softness="0.8" style="width:100%; height:100%; pointer-events:none;"></model-viewer>
+          </div>
+          <h3>Deluxe Examination Couch</h3>
+          <p>Customise cabinet and drawer colors</p>
+        </a>
+      </div>
+    </div>
 
-<div id="toast"></div>
+    <div class="product-grid-section">
+      <h2 class="section-heading">View-Only Models</h2>
+      <div class="product-grid">
+        <a href="#semi-fowler" class="product-card view-only-card">
+          <div class="product-card-preview">
+            <model-viewer src="assets/models/view-only-models/semi-fowler-cot.glb" loading="lazy" auto-rotate rotation-per-second="12deg" interaction-prompt="none" shadow-intensity="0.5" shadow-softness="0.8" style="width:100%; height:100%; pointer-events:none;"></model-viewer>
+          </div>
+          <h3>Semi Fowler Cot</h3>
+          <p>3D visual representation</p>
+        </a>
+        <a href="#over-bed-table" class="product-card view-only-card">
+          <div class="product-card-preview">
+            <model-viewer src="assets/models/view-only-models/over-bed-table.glb" loading="lazy" auto-rotate rotation-per-second="12deg" interaction-prompt="none" shadow-intensity="0.5" shadow-softness="0.8" style="width:100%; height:100%; pointer-events:none;"></model-viewer>
+          </div>
+          <h3>Over Bed Table</h3>
+          <p>3D visual representation</p>
+        </a>
+        <a href="#attender-cot-deluxe" class="product-card view-only-card">
+          <div class="product-card-preview">
+            <model-viewer src="assets/models/view-only-models/attender-cot/attender-cot-deluxe.glb" loading="lazy" auto-rotate rotation-per-second="12deg" interaction-prompt="none" shadow-intensity="0.5" shadow-softness="0.8" style="width:100%; height:100%; pointer-events:none;"></model-viewer>
+          </div>
+          <h3>Attender Cot Deluxe</h3>
+          <p>3D visual representation</p>
+        </a>
+        <a href="#attender-cot" class="product-card view-only-card">
+          <div class="product-card-preview">
+            <model-viewer src="assets/models/view-only-models/attender-cot/attender-cot.glb" loading="lazy" auto-rotate rotation-per-second="12deg" interaction-prompt="none" shadow-intensity="0.5" shadow-softness="0.8" style="width:100%; height:100%; pointer-events:none;"></model-viewer>
+          </div>
+          <h3>Attender Cot Plain</h3>
+          <p>3D visual representation</p>
+        </a>
+        <a href="#bedside-locker-deluxe" class="product-card view-only-card">
+          <div class="product-card-preview">
+            <model-viewer src="assets/models/view-only-models/bedside-locker/bedside-locker-deluxe.glb" loading="lazy" auto-rotate rotation-per-second="12deg" interaction-prompt="none" shadow-intensity="0.5" shadow-softness="0.8" style="width:100%; height:100%; pointer-events:none;"></model-viewer>
+          </div>
+          <h3>Bed Sidelocker Deluxe Wood</h3>
+          <p>3D visual representation</p>
+        </a>
+        <a href="#bedside-locker" class="product-card view-only-card">
+          <div class="product-card-preview">
+            <model-viewer src="assets/models/view-only-models/bedside-locker/bedside-locker.glb" loading="lazy" auto-rotate rotation-per-second="12deg" interaction-prompt="none" shadow-intensity="0.5" shadow-softness="0.8" style="width:100%; height:100%; pointer-events:none;"></model-viewer>
+          </div>
+          <h3>Bedside Locker Plain</h3>
+          <p>3D visual representation</p>
+        </a>
+      </div>
+    </div>
+  </main>
+
+</div>
 
 <script type="importmap">
   {
@@ -575,7 +683,7 @@
     }
   }
 </script>
-<script type="module" src="app.js?v=20260824_4"></script>
+<script type="module" src="app.js?v=20260824_5"></script>
 
 </body>
 </html>

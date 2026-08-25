@@ -95,6 +95,8 @@ function loadModel(fileOrUrl, fileName) {
   loadingName.textContent = name;
   loadingEl.classList.add('visible');
   if (initialHint) initialHint.style.display = 'none';
+  const sidebarEl = document.getElementById('sidebar-config');
+  if (sidebarEl) sidebarEl.classList.add('loading');
 
   // Classify model type (View-only vs Customisation)
   const isViewOnly = url.toLowerCase().includes('view-only-models') ||
@@ -107,10 +109,6 @@ function loadModel(fileOrUrl, fileName) {
   if (appEl) {
     if (isViewOnly) {
       appEl.classList.add('view-only');
-      const inspectorSidebar = document.getElementById('sidebar');
-      const inspectorToggleBtn = document.getElementById('inspector-toggle-btn');
-      if (inspectorSidebar) inspectorSidebar.classList.remove('open');
-      if (inspectorToggleBtn) inspectorToggleBtn.classList.remove('active');
     } else {
       appEl.classList.remove('view-only');
     }
@@ -157,6 +155,14 @@ function loadModel(fileOrUrl, fileName) {
   modelViewer.cameraOrbit = modelInitialOrbit;
   modelViewer.cameraTarget = modelInitialTarget;
   modelViewer.fieldOfView = modelInitialFov;
+
+  // Reset panning state on load
+  const panModelToggle = document.getElementById('pan-model-toggle-cb');
+  if (panModelToggle) {
+    panModelToggle.checked = false;
+  }
+  modelViewer.setAttribute('disable-pan', '');
+  modelViewer.disablePan = true;
 
   // Set model-specific exposure & environment image
   if (modelKey === 'bedside-locker') {
@@ -287,15 +293,15 @@ modelViewer.addEventListener('load', () => {
   document.getElementById('badge-stats').textContent =
     `${Object.keys(meshMap).length} meshes . ${Math.round(totalTris).toLocaleString()} tris`;
 
-  showToast(`Loaded: "${name}"`);
+  // showToast(`Loaded: "${name}"`);
   loadingEl.classList.remove('visible');
 
   // Hide/show sections dynamically based on model type
-  const isIcu = productName === 'ICU Cot';
-  const isFowler = productName === 'Fowler Cot';
-  const isCouch = productName === 'Deluxe Examination Couch';
-  const isHiLo = productName === 'Hi-Lo Strecher';
-  const isLabor = productName === 'Labor Cot';
+  const isIcu = productName.includes('ICU Cot');
+  const isFowler = productName.includes('Fowler Cot');
+  const isCouch = productName.includes('Examination Couch') || productName.includes('Couch');
+  const isHiLo = productName.includes('Hi-Lo Stretcher') || productName.includes('Hi-Lo Strecher') || productName.includes('Hi-Lo');
+  const isLabor = productName.includes('Labor Cot');
 
   const sectionHeadFoot = document.getElementById('config-section-headfoot');
   const sectionSideRails = document.getElementById('config-section-siderails');
@@ -375,17 +381,20 @@ modelViewer.addEventListener('load', () => {
   updateSectionHeadings();
   setDefaultConfigForModel(name);
   applyCurrentConfig();
+
+  const sidebarEl = document.getElementById('sidebar-config');
+  if (sidebarEl) sidebarEl.classList.remove('loading');
 });
 
 
 
 function updateSectionHeadings() {
   const sections = [
+    { id: 'config-section-operation', baseText: 'BED TYPE' },
     { id: 'config-section-headfoot', baseText: 'Head & Foot End Panel' },
     { id: 'config-section-siderails', baseText: 'Side Rails' },
     { id: 'config-section-mattress', baseText: 'Mattress Type' },
-    { id: 'config-section-wheel', baseText: 'Wheel Type' },
-    { id: 'config-section-operation', baseText: 'Operation' }
+    { id: 'config-section-wheel', baseText: 'Wheel Type' }
   ];
 
   let currentLetterCode = 65; // 'A'
@@ -415,6 +424,7 @@ function getMeshIconSrc(name) {
 
 // == Build mesh list UI ========================================================
 function buildMeshList(filter = '') {
+  if (!meshListEl) return;
   meshListEl.querySelectorAll('.mesh-item').forEach(el => el.remove());
 
   const keys = Object.keys(meshMap);
@@ -556,7 +566,7 @@ function toggleMesh(key, visible) {
     }
   });
 
-  const item = meshListEl.querySelector(`[data-key="${key}"]`);
+  const item = meshListEl ? meshListEl.querySelector(`[data-key="${key}"]`) : null;
   if (item) {
     item.classList.toggle('hidden-mesh', !visible);
     const cb = item.querySelector('input[type=checkbox]');
@@ -576,7 +586,9 @@ function focusMesh(key, itemEl, forceSelect = false) {
     return;
   }
 
-  meshListEl.querySelectorAll('.mesh-item.active').forEach(el => el.classList.remove('active'));
+  if (meshListEl) {
+    meshListEl.querySelectorAll('.mesh-item.active').forEach(el => el.classList.remove('active'));
+  }
   selectedMesh = key;
   itemEl.classList.add('active');
 
@@ -647,7 +659,7 @@ function focusSection(section) {
     } else if (section === 'operation') {
       const isRemoteActive = document.querySelector('input[name="operation"]:checked')?.value === 'remote';
       if (isRemoteActive) {
-        if (name.includes('remote') || name.includes('handset') || name.includes('remote_cradle')) {
+        if (name.includes('remote') || name.includes('handset') || name.includes('remote_cradle') || name.includes('motor') || name.includes('actuator') || name.includes('linear')) {
           match = true;
         }
       } else {
@@ -675,12 +687,19 @@ function focusSection(section) {
   });
   
   if (section === 'operation' && matchingMeshes.length === 0) {
+    const isRemoteActive = document.querySelector('input[name="operation"]:checked')?.value === 'remote';
     Object.keys(meshMap).forEach(key => {
       const entry = meshMap[key];
       if (!entry.visible) return;
       const name = entry.name.toLowerCase();
-      if (name.includes('motor') || name.includes('remote') || name.includes('crank') || name.includes('manual') || name.includes('handle')) {
-        matchingMeshes.push(...entry.meshes);
+      if (isRemoteActive) {
+        if (name.includes('motor') || name.includes('actuator') || name.includes('linear') || name.includes('remote') || name.includes('handset')) {
+          matchingMeshes.push(...entry.meshes);
+        }
+      } else {
+        if (name.includes('crank') || name.includes('manual') || name.includes('handle')) {
+          matchingMeshes.push(...entry.meshes);
+        }
       }
     });
   }
@@ -757,11 +776,16 @@ function focusSection(section) {
 function updateStats() {
   const keys    = Object.keys(meshMap);
   const visible = keys.filter(k => meshMap[k].visible).length;
-  document.getElementById('stat-meshes').textContent  = keys.length;
-  document.getElementById('stat-visible').textContent = visible;
+  
+  const statMeshesEl = document.getElementById('stat-meshes');
+  const statVisibleEl = document.getElementById('stat-visible');
+  const statTrisEl = document.getElementById('stat-tris');
+
+  if (statMeshesEl) statMeshesEl.textContent  = keys.length;
+  if (statVisibleEl) statVisibleEl.textContent = visible;
 
   const tris = keys.reduce((sum, k) => sum + (meshMap[k].triCount || 0), 0);
-  document.getElementById('stat-tris').textContent = tris > 0 ? Math.round(tris).toLocaleString() : '-';
+  if (statTrisEl) statTrisEl.textContent = tris > 0 ? Math.round(tris).toLocaleString() : '-';
 }
 
 function setDefaultConfigForModel(name) {
@@ -961,9 +985,9 @@ function applyCurrentConfig() {
     }
 
     // Operation matching
-    if (name.includes('motor') || name.includes('remote') || name.includes('crank') || name.includes('manual') || name.includes('handle')) {
+    if (name.includes('motor') || name.includes('remote') || name.includes('crank') || name.includes('manual') || name.includes('handle') || name.includes('cable') || name.includes('wire')) {
       if (operation === 'manual') {
-        if (name.includes('motor') || name.includes('remote')) visible = false;
+        if (name.includes('motor') || name.includes('remote') || name.includes('cable') || name.includes('wire')) visible = false;
       } else if (operation === 'remote') {
         if (name.includes('crank') || name.includes('manual') || name.includes('handle')) visible = false;
       }
@@ -1418,49 +1442,7 @@ if (absRailCustomPicker && absRailCustomSwatch) {
   absRailCustomPicker.addEventListener('change', handleAbsRailCustomColor);
 }
 
-// Developer Mesh Inspector Drawer Toggle
-const inspectorSidebar = document.getElementById('sidebar');
-const inspectorToggleBtn = document.getElementById('inspector-toggle-btn');
-const closeInspectorBtn = document.getElementById('close-inspector-btn');
 
-inspectorToggleBtn.addEventListener('click', () => {
-  inspectorSidebar.classList.toggle('open');
-  inspectorToggleBtn.classList.toggle('active', inspectorSidebar.classList.contains('open'));
-});
-
-closeInspectorBtn.addEventListener('click', () => {
-  inspectorSidebar.classList.remove('open');
-  inspectorToggleBtn.classList.remove('active');
-  if (selectedMesh) {
-    const itemEl = meshListEl.querySelector(`[data-key="${selectedMesh}"]`);
-    if (itemEl) itemEl.classList.remove('active');
-    selectedMesh = null;
-    applyCurrentConfig();
-  }
-});
-
-// == Toolbar actions ===========================================================
-document.getElementById('show-all-btn').addEventListener('click', () => {
-  Object.keys(meshMap).forEach(k => toggleMesh(k, true));
-  showToast('All meshes visible');
-});
-
-document.getElementById('hide-all-btn').addEventListener('click', () => {
-  selectedMesh = null;
-  Object.keys(meshMap).forEach(k => toggleMesh(k, false));
-  showToast('All meshes hidden');
-});
-
-document.getElementById('isolate-btn').addEventListener('click', () => {
-  if (!selectedMesh) { showToast('Click a mesh in Inspector first to isolate'); return; }
-  const name = meshMap[selectedMesh]?.name ?? selectedMesh;
-  Object.keys(meshMap).forEach(k => toggleMesh(k, k === selectedMesh));
-  showToast(`Isolated "${name}"`);
-});
-
-document.getElementById('mesh-search').addEventListener('input', (e) => {
-  buildMeshList(e.target.value);
-});
 
 // == HUD ======================================================================
 document.getElementById('reset-cam-btn').addEventListener('click', () => {
@@ -1498,9 +1480,161 @@ document.getElementById('grid-btn').addEventListener('click', () => {
   showToast(newIntensity === '0' ? 'Shadows hidden' : 'Shadows visible');
 });
 
-document.getElementById('bg-color-picker').addEventListener('input', (e) => {
-  modelViewer.style.backgroundColor = e.target.value;
-});
+// == Background Color Palette Selector =========================================
+const bgPaletteBtn = document.getElementById('bg-palette-btn');
+const bgPalettePopover = document.getElementById('bg-palette-popover');
+if (bgPaletteBtn && bgPalettePopover) {
+  bgPaletteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    bgPalettePopover.classList.toggle('show');
+  });
+
+  // Close popover when clicking anywhere else
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.bg-palette-popover') && e.target !== bgPaletteBtn) {
+      bgPalettePopover.classList.remove('show');
+    }
+  });
+
+  // Prevent popover clicks from closing itself
+  bgPalettePopover.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+
+  // Initialize Custom Canvas Color Picker
+  setTimeout(() => {
+    initCustomColorPicker();
+  }, 100);
+}
+
+function initCustomColorPicker() {
+  const canvas = document.getElementById('color-map');
+  const cursor = document.getElementById('color-map-cursor');
+  const hueSlider = document.getElementById('hue-slider');
+  const preview = document.getElementById('color-preview-swatch');
+  const hexInput = document.getElementById('color-hex-input');
+
+  if (!canvas || !hueSlider) return;
+
+  const ctx = canvas.getContext('2d');
+  let currentHue = 230; // Default hue
+  let currentX = Math.round(canvas.width * 0.6);
+  let currentY = Math.round(canvas.height * 0.4);
+  let isDragging = false;
+
+  function drawCanvas() {
+    const width = canvas.width;
+    const height = canvas.height;
+
+    ctx.clearRect(0, 0, width, height);
+
+    // Solid Hue
+    ctx.fillStyle = `hsl(${currentHue}, 100%, 50%)`;
+    ctx.fillRect(0, 0, width, height);
+
+    // White-to-transparent horizontal
+    const whiteGrad = ctx.createLinearGradient(0, 0, width, 0);
+    whiteGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    whiteGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = whiteGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Transparent-to-black vertical
+    const blackGrad = ctx.createLinearGradient(0, 0, 0, height);
+    blackGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    blackGrad.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    ctx.fillStyle = blackGrad;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  function updateColorAtCursor(triggerToast = false) {
+    if (currentX < 0) currentX = 0;
+    if (currentX >= canvas.width) currentX = canvas.width - 1;
+    if (currentY < 0) currentY = 0;
+    if (currentY >= canvas.height) currentY = canvas.height - 1;
+
+    cursor.style.left = `${(currentX / canvas.width) * 100}%`;
+    cursor.style.top = `${(currentY / canvas.height) * 100}%`;
+
+    const imgData = ctx.getImageData(currentX, currentY, 1, 1).data;
+    const r = imgData[0];
+    const g = imgData[1];
+    const b = imgData[2];
+
+    const hex = rgbToHex(r, g, b);
+    preview.style.backgroundColor = hex;
+    hexInput.value = hex;
+
+    modelViewer.style.backgroundColor = hex;
+    
+    if (triggerToast) {
+      showToast(`Background color: ${hex}`);
+    }
+  }
+
+  function rgbToHex(r, g, b) {
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+  }
+
+  function handleMove(e) {
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    currentX = Math.round(((clientX - rect.left) / rect.width) * canvas.width);
+    currentY = Math.round(((clientY - rect.top) / rect.height) * canvas.height);
+
+    updateColorAtCursor(false);
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    handleMove(e);
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) handleMove(e);
+  });
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      updateColorAtCursor(true);
+    }
+  });
+
+  canvas.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    handleMove(e);
+  });
+  canvas.addEventListener('touchmove', (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      handleMove(e);
+    }
+  });
+  canvas.addEventListener('touchend', () => {
+    if (isDragging) {
+      isDragging = false;
+      updateColorAtCursor(true);
+    }
+  });
+
+  hueSlider.addEventListener('input', () => {
+    currentHue = hueSlider.value;
+    drawCanvas();
+    updateColorAtCursor(false);
+  });
+  hueSlider.addEventListener('change', () => {
+    updateColorAtCursor(true);
+  });
+
+  drawCanvas();
+  updateColorAtCursor(false);
+}
 
 // == Viewport click raycasting ===============================================
 let pointerDownX = 0;
@@ -1584,28 +1718,25 @@ function onCanvasClick(event) {
 }
 
 function blinkMesh(mesh) {
-  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-  const originalColors = [];
+  if (!mesh.material) return;
+  const originalMaterials = mesh.material;
 
-  materials.forEach((mat) => {
-    if (mat.emissive) {
-      originalColors.push({ mat, type: 'emissive', val: mat.emissive.clone() });
-      mat.emissive.setHex(0xEA580C);
-    } else if (mat.color) {
-      originalColors.push({ mat, type: 'color', val: mat.color.clone() });
-      mat.color.setHex(0xEA580C);
-    }
-  });
+  if (Array.isArray(mesh.material)) {
+    mesh.material = mesh.material.map(mat => {
+      const cloned = mat.clone();
+      if (cloned.emissive) cloned.emissive.setHex(0xEA580C);
+      else if (cloned.color) cloned.color.setHex(0xEA580C);
+      return cloned;
+    });
+  } else {
+    mesh.material = mesh.material.clone();
+    if (mesh.material.emissive) mesh.material.emissive.setHex(0xEA580C);
+    else if (mesh.material.color) mesh.material.color.setHex(0xEA580C);
+  }
   requestRender();
 
   setTimeout(() => {
-    originalColors.forEach(({ mat, type, val }) => {
-      if (type === 'emissive') {
-        mat.emissive.copy(val);
-      } else if (type === 'color') {
-        mat.color.copy(val);
-      }
-    });
+    mesh.material = originalMaterials;
     requestRender();
   }, 350);
 }
@@ -1714,89 +1845,99 @@ function showToast(msg) {
   }, 3000);
 }
 
-// Load default model from root URL on page load
-let defaultModel = 'assets/models/view-only-models/semi-fowler-cot.glb';
+// == Navigation & Routing Logic ===============================================
+const backBtn = document.getElementById('back-btn');
+if (backBtn) {
+  backBtn.removeAttribute('onclick');
+  backBtn.addEventListener('click', () => {
+    const hasHash = !!window.location.hash && window.location.hash !== '#';
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasModelQuery = !!urlParams.get('model');
 
-try {
-  const urlParams = new URLSearchParams(window.location.search);
-  const hashVal = window.location.hash.toLowerCase().replace('#', '');
-  const modelQuery = (urlParams.get('model') || hashVal || '').toLowerCase();
-  
-  if (modelQuery.includes('deluxe-examination-couch') || modelQuery.includes('couch') || modelQuery.includes('examination')) {
-    defaultModel = 'assets/models/customisation-models/deluxe-examination-couch/3d_model.glb';
-    productName = 'Deluxe Examination Couch';
-  } else if (modelQuery.includes('semi-fowler') || modelQuery.includes('semi_fowler')) {
-    defaultModel = 'assets/models/view-only-models/semi-fowler-cot.glb';
-    productName = 'Semi Fowler Cot';
-  } else if (modelQuery.includes('fowler-cot') || modelQuery.includes('fowler')) {
-    defaultModel = 'assets/models/customisation-models/fowler-cot/3d_model.glb';
-    productName = 'Fowler Cot';
-  } else if (modelQuery.includes('hi-lo') || modelQuery.includes('hilo') || modelQuery.includes('strecher')) {
-    defaultModel = 'assets/models/customisation-models/hi-lo-stretcher/3d_model.glb';
-    productName = 'Hi-Lo Strecher';
-  } else if (modelQuery.includes('icu')) {
-    defaultModel = 'assets/models/customisation-models/icu-cot/3d_model.glb';
-    productName = 'ICU Cot';
-  } else if (modelQuery.includes('labor-cot') || modelQuery.includes('deluxe-double-door') || modelQuery.includes('deluxe_double_door')) {
-    defaultModel = 'assets/models/customisation-models/labor-cot/3d_model.glb';
-    productName = 'Labor Cot';
-  } else if (modelQuery.includes('over-bed-table') || modelQuery.includes('overbed')) {
-    defaultModel = 'assets/models/view-only-models/over-bed-table.glb';
-    productName = 'Over Bed Table';
-  } else if (modelQuery.includes('attender-cot-deluxe') || modelQuery.includes('attender_cot_deluxe')) {
-    defaultModel = 'assets/models/view-only-models/attender-cot/attender-cot-deluxe.glb';
-    productName = 'Attender Cot Deluxe';
-  } else if (modelQuery.includes('attender-cot') || modelQuery.includes('attender_cot')) {
-    defaultModel = 'assets/models/view-only-models/attender-cot/attender-cot.glb';
-    productName = 'Attender Cot Plain';
-  } else if (modelQuery.includes('bedside-locker-deluxe') || modelQuery.includes('sidelocker_deluxe') || modelQuery.includes('sidelocker-deluxe')) {
-    defaultModel = 'assets/models/view-only-models/bedside-locker/bedside-locker-deluxe.glb';
-    productName = 'Bed Sidelocker Deluxe Wood';
-  } else if (modelQuery.includes('bedside-locker') || modelQuery.includes('locker_plain') || modelQuery.includes('locker-plain')) {
-    defaultModel = 'assets/models/view-only-models/bedside-locker/bedside-locker.glb';
-    productName = 'Bedside Locker Plain';
-  }
-} catch (e) {
-  console.warn('URL parsing fallback:', e);
-}
-
-// Update the product selector value dynamically to match the loaded model
-const selectorEl = document.getElementById('product-selector');
-if (selectorEl) {
-  const urlParams = new URLSearchParams(window.location.search);
-  const hashVal = window.location.hash.toLowerCase().replace('#', '');
-  const modelQuery = (urlParams.get('model') || hashVal || 'semi-fowler').toLowerCase();
-  
-  if (modelQuery.includes('deluxe-examination-couch') || modelQuery.includes('couch') || modelQuery.includes('examination')) {
-    selectorEl.value = 'couch';
-  } else if (modelQuery.includes('semi-fowler') || modelQuery.includes('semi_fowler')) {
-    selectorEl.value = 'semi-fowler';
-  } else if (modelQuery.includes('fowler-cot') || modelQuery.includes('fowler')) {
-    selectorEl.value = 'fowler-cot';
-  } else if (modelQuery.includes('hi-lo') || modelQuery.includes('hilo') || modelQuery.includes('strecher')) {
-    selectorEl.value = 'hi-lo';
-  } else if (modelQuery.includes('icu')) {
-    selectorEl.value = 'icu';
-  } else if (modelQuery.includes('labor-cot') || modelQuery.includes('deluxe-double-door') || modelQuery.includes('deluxe_double_door')) {
-    selectorEl.value = 'labor-cot';
-  } else if (modelQuery.includes('over-bed-table') || modelQuery.includes('overbed')) {
-    selectorEl.value = 'over-bed-table';
-  } else if (modelQuery.includes('attender-cot-deluxe') || modelQuery.includes('attender_cot_deluxe')) {
-    selectorEl.value = 'attender-cot-deluxe';
-  } else if (modelQuery.includes('attender-cot') || modelQuery.includes('attender_cot')) {
-    selectorEl.value = 'attender-cot';
-  } else if (modelQuery.includes('bedside-locker-deluxe') || modelQuery.includes('sidelocker_deluxe') || modelQuery.includes('sidelocker-deluxe')) {
-    selectorEl.value = 'bedside-locker-deluxe';
-  } else if (modelQuery.includes('bedside-locker') || modelQuery.includes('locker_plain') || modelQuery.includes('locker-plain')) {
-    selectorEl.value = 'bedside-locker';
-  }
-
-  selectorEl.addEventListener('change', (e) => {
-    window.location.hash = e.target.value;
+    if (hasHash || hasModelQuery) {
+      // Return to homescreen by clearing hash or search query
+      if (hasHash) {
+        window.location.hash = '';
+      } else {
+        window.location.href = window.location.pathname;
+      }
+    } else {
+      // Already at homescreen, go back in history or close window
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.close();
+      }
+    }
   });
 }
 
-loadModel(defaultModel);
+function initNavigation() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const hashVal = window.location.hash.toLowerCase().replace('#', '');
+  const modelQuery = urlParams.get('model') || hashVal || '';
+
+  const appEl = document.getElementById('app');
+  const titleEl = document.getElementById('product-title');
+
+  if (!modelQuery) {
+    // Homescreen mode
+    if (appEl) appEl.classList.add('homescreen-active');
+    if (titleEl) titleEl.textContent = 'Sri Mathurams Medical Engineering';
+    if (modelViewer) modelViewer.style.display = 'none';
+  } else {
+    // Model Configurator mode
+    if (appEl) appEl.classList.remove('homescreen-active');
+    if (modelViewer) modelViewer.style.display = 'block';
+
+    let modelPath = '';
+    let nameToSet = '';
+
+    if (modelQuery.includes('deluxe-examination-couch') || modelQuery.includes('couch') || modelQuery.includes('examination')) {
+      modelPath = 'assets/models/customisation-models/deluxe-examination-couch/3d_model.glb';
+      nameToSet = 'Deluxe Examination Couch';
+    } else if (modelQuery.includes('semi-fowler') || modelQuery.includes('semi_fowler')) {
+      modelPath = 'assets/models/view-only-models/semi-fowler-cot.glb';
+      nameToSet = 'Semi Fowler Cot';
+    } else if (modelQuery.includes('fowler-cot') || modelQuery.includes('fowler')) {
+      modelPath = 'assets/models/customisation-models/fowler-cot/3d_model.glb';
+      nameToSet = 'Fowler Cot';
+    } else if (modelQuery.includes('hi-lo') || modelQuery.includes('hilo') || modelQuery.includes('strecher')) {
+      modelPath = 'assets/models/customisation-models/hi-lo-stretcher/3d_model.glb';
+      nameToSet = 'Hi-Lo Stretcher';
+    } else if (modelQuery.includes('icu')) {
+      modelPath = 'assets/models/customisation-models/icu-cot/3d_model.glb';
+      nameToSet = 'ICU Cot';
+    } else if (modelQuery.includes('labor-cot') || modelQuery.includes('deluxe-double-door') || modelQuery.includes('deluxe_double_door')) {
+      modelPath = 'assets/models/customisation-models/labor-cot/3d_model.glb';
+      nameToSet = 'Labor Cot';
+    } else if (modelQuery.includes('over-bed-table') || modelQuery.includes('overbed')) {
+      modelPath = 'assets/models/view-only-models/over-bed-table.glb';
+      nameToSet = 'Over Bed Table';
+    } else if (modelQuery.includes('attender-cot-deluxe') || modelQuery.includes('attender_cot_deluxe')) {
+      modelPath = 'assets/models/view-only-models/attender-cot/attender-cot-deluxe.glb';
+      nameToSet = 'Attender Cot Deluxe';
+    } else if (modelQuery.includes('attender-cot') || modelQuery.includes('attender_cot')) {
+      modelPath = 'assets/models/view-only-models/attender-cot/attender-cot.glb';
+      nameToSet = 'Attender Cot Plain';
+    } else if (modelQuery.includes('bedside-locker-deluxe') || modelQuery.includes('sidelocker_deluxe') || modelQuery.includes('sidelocker-deluxe')) {
+      modelPath = 'assets/models/view-only-models/bedside-locker/bedside-locker-deluxe.glb';
+      nameToSet = 'Bed Sidelocker Deluxe Wood';
+    } else if (modelQuery.includes('bedside-locker') || modelQuery.includes('locker_plain') || modelQuery.includes('locker-plain')) {
+      modelPath = 'assets/models/view-only-models/bedside-locker/bedside-locker.glb';
+      nameToSet = 'Bedside Locker Plain';
+    }
+
+    if (modelPath) {
+      productName = nameToSet;
+      if (titleEl) titleEl.textContent = nameToSet;
+      loadModel(modelPath);
+    }
+  }
+}
+
+// Trigger navigation state check
+initNavigation();
 
 window.addEventListener('hashchange', () => {
   window.location.reload();
@@ -1809,3 +1950,57 @@ if (autoRotateToggle) {
     modelViewer.autoRotate = autoRotateToggle.checked;
   });
 }
+
+// == Pan Model Toggle Checkbox Listener ========================================
+const panModelToggle = document.getElementById('pan-model-toggle-cb');
+const panModelCard = document.getElementById('pan-model-card');
+if (panModelToggle && panModelCard) {
+  const isMobileOrTablet = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || /Mobi|Android|iPhone|iPad|Tablet/i.test(navigator.userAgent);
+  const tooltipText = isMobileOrTablet 
+    ? 'Use one or two fingers to drag to pan the model' 
+    : 'Use mouse right click and drag to pan the model';
+  
+  // Set card tooltip
+  panModelCard.setAttribute('title', tooltipText);
+
+  panModelToggle.addEventListener('change', () => {
+    if (panModelToggle.checked) {
+      modelViewer.removeAttribute('disable-pan');
+      modelViewer.disablePan = false;
+      // Show device-based toast message
+      const toastText = isMobileOrTablet
+        ? 'Pan Mode: Use one or two fingers to drag and pan'
+        : 'Pan Mode: Use mouse right click and drag to pan';
+      showToast(toastText);
+    } else {
+      modelViewer.setAttribute('disable-pan', '');
+      modelViewer.disablePan = true;
+      // Reset the camera-target to original model target to restore pivot point
+      modelViewer.cameraTarget = modelInitialTarget;
+    }
+  });
+}
+
+// == Fullscreen Mode Logic =====================================================
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+const canvasWrapEl = document.getElementById('canvas-wrap');
+
+if (fullscreenBtn && canvasWrapEl) {
+  fullscreenBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      canvasWrapEl.requestFullscreen().catch(err => {
+        console.error(`Error entering fullscreen: ${err.message}`);
+        showToast('Fullscreen not supported');
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    const isFS = !!document.fullscreenElement;
+    fullscreenBtn.classList.toggle('active', isFS);
+    canvasWrapEl.classList.toggle('fullscreen-mode', isFS);
+  });
+}
+
